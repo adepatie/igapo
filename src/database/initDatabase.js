@@ -312,7 +312,7 @@ export function initializeDatabase() {
       "Near Threatened",
       "Has the strongest bite force of any big cat, can crush turtle shells and skulls",
       "Yaguareté",
-      "https://upload.wikimedia.org/wikipedia/commons/0/0a/Standing_jaguar.jpg",
+      "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=400&h=300&fit=crop",
     ],
     [
       "Giant River Otter",
@@ -326,7 +326,7 @@ export function initializeDatabase() {
       "Endangered",
       'Called "river wolf" by locals, can grow to 6 feet long, hunts piranhas',
       "Ariranhas",
-      "https://upload.wikimedia.org/wikipedia/commons/9/91/Giant_otter_in_Cantao.jpg",
+      "https://images.unsplash.com/photo-1582798621481-6f50ab0fa0e7?w=400&h=300&fit=crop",
     ],
     [
       "Pink River Dolphin",
@@ -340,7 +340,7 @@ export function initializeDatabase() {
       "Endangered",
       "Legend says they transform into handsome men at night. Actually pink due to blood vessels.",
       "Boto",
-      "https://upload.wikimedia.org/wikipedia/commons/f/f3/Amazonriverdolphin2.jpg",
+      "https://images.unsplash.com/photo-1570481662006-a3a1374699e8?w=400&h=300&fit=crop",
     ],
     [
       "Three-toed Sloth",
@@ -354,7 +354,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Only defecates once per week, climbing down puts them at risk from predators",
       "Pelejo",
-      "https://upload.wikimedia.org/wikipedia/commons/1/18/Bradypus.jpg",
+      "https://images.unsplash.com/photo-1621513398851-97c44e5bc2ee?w=400&h=300&fit=crop",
     ],
     [
       "Capybara",
@@ -368,7 +368,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can stay underwater for 5 minutes, frequently preyed upon by jaguars and anacondas",
       "Carpincho",
-      "https://upload.wikimedia.org/wikipedia/commons/e/ec/Capybara_%28Hydrochoerus_hydrochaeris%29.JPG",
+      "https://images.unsplash.com/photo-1614027164847-1b28cfe1df60?w=400&h=300&fit=crop",
     ],
     [
       "Howler Monkey",
@@ -382,7 +382,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Their roar comes from an enlarged hyoid bone in their throat",
       "Araguato",
-      "https://upload.wikimedia.org/wikipedia/commons/f/f7/Alouatta_seniculus_%28Kok%C3%AD%29_-_Flickr_-_Alejandro_Bayer_%282%29.jpg",
+      "https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=400&h=300&fit=crop",
     ],
     [
       "Tapir",
@@ -396,7 +396,7 @@ export function initializeDatabase() {
       "Vulnerable",
       "Closest living relatives are horses and rhinos, despite looking like pigs",
       "Anta",
-      "https://upload.wikimedia.org/wikipedia/commons/e/e3/Lowland_Tapir.jpg",
+      "https://images.unsplash.com/photo-1598901845898-7f9e31ccfa6b?w=400&h=300&fit=crop",
     ],
     [
       "Puma",
@@ -410,7 +410,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can leap 18 feet vertically and 40 feet horizontally",
       "León",
-      "https://upload.wikimedia.org/wikipedia/commons/d/d6/Mountain_Lion_in_Glacier_National_Park.jpg",
+      "https://images.unsplash.com/photo-1437622368342-7a3d73a34c8f?w=400&h=300&fit=crop",
     ],
     [
       "Giant Anteater",
@@ -424,7 +424,7 @@ export function initializeDatabase() {
       "Vulnerable",
       "No teeth, sticky saliva traps ants. Claws so large they walk on knuckles.",
       "Oso hormiguero",
-      "https://upload.wikimedia.org/wikipedia/commons/1/1a/Myrmecophaga_tridactyla_-_05.jpg",
+      "https://images.unsplash.com/photo-1612024782943-8f08d1701cb5?w=400&h=300&fit=crop",
     ],
     [
       "Spider Monkey",
@@ -438,7 +438,7 @@ export function initializeDatabase() {
       "Endangered",
       "Their tail is so strong it can support their entire body weight",
       "Maquisapa",
-      "https://upload.wikimedia.org/wikipedia/commons/0/0d/Ateles_belzebuth_3.jpg",
+      "https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=400&h=300&fit=crop",
     ],
     [
       "Ocelot",
@@ -452,7 +452,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Unlike most cats, ocelots are good swimmers and often hunt fish",
       "Tigrillo",
-      "https://upload.wikimedia.org/wikipedia/commons/1/15/Ocelot_%28Jaguatirica%29_Zoo_Itatiba.jpg",
+      "https://images.unsplash.com/photo-1606150583783-d0a7b5f9f308?w=400&h=300&fit=crop",
     ],
     [
       "Kinkajou",
@@ -466,7 +466,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Has a 5-inch tongue for extracting honey, pollinate flowers while feeding",
       "Mono de noche",
-      "https://upload.wikimedia.org/wikipedia/commons/6/6b/Kinkajou_%28Potos_flavus%29_2.jpg",
+      "https://images.unsplash.com/photo-1591825729269-caeb344f6df2?w=400&h=300&fit=crop",
     ],
 
     // Reptiles
@@ -482,7 +482,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can grow over 29 feet and weigh 550 lbs, eats caimans and capybaras whole",
       "Sucuri",
-      "https://upload.wikimedia.org/wikipedia/commons/f/f5/Eunectes_murinus_-_National_Zoo_-_01.jpg",
+      "https://images.unsplash.com/photo-1531306728370-e2ebd9d7bb99?w=400&h=300&fit=crop",
     ],
     [
       "Black Caiman",
@@ -496,7 +496,7 @@ export function initializeDatabase() {
       "Conservation Dependent",
       "Once nearly extinct from hunting, apex predator, attacks humans occasionally",
       "Jacaré-açu",
-      "https://upload.wikimedia.org/wikipedia/commons/6/6f/Black-Caiman.jpg",
+      "https://images.unsplash.com/photo-1551244057-d6449e72e82c?w=400&h=300&fit=crop",
     ],
     [
       "Spectacled Caiman",
@@ -510,7 +510,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can survive in brackish and salt water, unlike most caimans",
       "Babilla",
-      "https://upload.wikimedia.org/wikipedia/commons/2/29/Spectacled_Caiman.jpg",
+      "https://images.unsplash.com/photo-1618330677946-be8bc90f6e14?w=400&h=300&fit=crop",
     ],
     [
       "Yellow-footed Tortoise",
@@ -524,7 +524,7 @@ export function initializeDatabase() {
       "Vulnerable",
       "Males make clucking sounds during mating, highly prized for meat historically",
       "Motelo",
-      "https://upload.wikimedia.org/wikipedia/commons/f/f5/Chelonoidis_denticulata_2.jpg",
+      "https://images.unsplash.com/photo-1532938139958-9838113c8fec?w=400&h=300&fit=crop",
     ],
     [
       "Emerald Tree Boa",
@@ -538,7 +538,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Babies are born red or orange, turn green after one year",
       "Boa verde",
-      "https://upload.wikimedia.org/wikipedia/commons/5/59/Corallus_caninus_001.JPG",
+      "https://images.unsplash.com/photo-1527241194740-90be8cb5c2a0?w=400&h=300&fit=crop",
     ],
     [
       "Bushmaster",
@@ -552,7 +552,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Extremely venomous but rarely encounters humans, vibrates tail like rattlesnake",
       "Surucucu",
-      "https://upload.wikimedia.org/wikipedia/commons/e/e2/Bushmaster_at_Whiteoak_%285833547769%29.jpg",
+      "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop",
     ],
     [
       "Poison Dart Frog",
@@ -566,7 +566,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Indigenous people used their toxins on blow darts. Toxicity comes from diet.",
       "Rana venenosa",
-      "https://upload.wikimedia.org/wikipedia/commons/5/55/Dendrobates_tinctorius_%22azureus%22.jpg",
+      "https://images.unsplash.com/photo-1564349683136-77e08dba1ef7?w=400&h=300&fit=crop",
     ],
     [
       "Glass Frog",
@@ -580,7 +580,7 @@ export function initializeDatabase() {
       "Various",
       "You can see their heart beating and watch digestion happening",
       "Rana de cristal",
-      "https://upload.wikimedia.org/wikipedia/commons/b/be/Boophis_sp_1.jpg",
+      "https://images.unsplash.com/photo-1518043957214-8408c0d76f52?w=400&h=300&fit=crop",
     ],
     [
       "Boa Constrictor",
@@ -594,7 +594,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can grow to 13 feet long, heat-sensing scales detect warm-blooded prey",
       "Boa",
-      "https://upload.wikimedia.org/wikipedia/commons/4/4d/Boa_constrictor_%28Saint-Aignan-sur-Cher%29.JPG",
+      "https://images.unsplash.com/photo-1452857297128-d9c29adba80b?w=400&h=300&fit=crop",
     ],
     [
       "Matamata Turtle",
@@ -608,7 +608,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Opens its mouth rapidly creating suction that pulls in fish whole",
       "Matamata",
-      "https://upload.wikimedia.org/wikipedia/commons/f/f4/Mata_mata.jpg",
+      "https://images.unsplash.com/photo-1521302200778-33500795e128?w=400&h=300&fit=crop",
     ],
 
     // Birds
@@ -624,7 +624,7 @@ export function initializeDatabase() {
       "Near Threatened",
       "Talons are same size as grizzly bear claws, can carry prey equal to their body weight",
       "Águila arpía",
-      "https://upload.wikimedia.org/wikipedia/commons/d/d8/Harpia_harpyja_-Belize_Zoo%2C_Belize-8a.jpg",
+      "https://images.unsplash.com/photo-1568486688039-c0c7ab2dae8e?w=400&h=300&fit=crop",
     ],
     [
       "Scarlet Macaw",
@@ -638,7 +638,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Eats clay to neutralize toxins from unripe seeds. Can live 50+ years.",
       "Guacamayo",
-      "https://upload.wikimedia.org/wikipedia/commons/c/c7/Ara_macao_-Diergaarde_Blijdorp-8a.jpg",
+      "https://images.unsplash.com/photo-1544923408-75c5cef46f14?w=400&h=300&fit=crop",
     ],
     [
       "Hoatzin",
@@ -652,7 +652,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Only bird that ferments food like a cow. Chicks swim if threatened.",
       "Chenchena",
-      "https://upload.wikimedia.org/wikipedia/commons/9/90/Hoatzin_%28Opisthocomus_hoazin%29.JPG",
+      "https://images.unsplash.com/photo-1580982172477-9b6fcdc29632?w=400&h=300&fit=crop",
     ],
     [
       "Toucan",
@@ -666,7 +666,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Bill is hollow and filled with air pockets, surprisingly lightweight despite size",
       "Tucán",
-      "https://upload.wikimedia.org/wikipedia/commons/b/b9/Ramphastos_toco_-Birdworld%2C_Farnham%2C_Surrey%2C_England-8a.jpg",
+      "https://images.unsplash.com/photo-1606500889146-e80f4781cd4a?w=400&h=300&fit=crop",
     ],
     [
       "Jabiru Stork",
@@ -680,7 +680,7 @@ export function initializeDatabase() {
       "Least Concern",
       "One of only two storks with no voice box, makes clattering sounds instead",
       "Tuiuiú",
-      "https://upload.wikimedia.org/wikipedia/commons/2/25/Jabiru_mycteria_-Iberaquera_Lake%2C_near_Laguna%2C_Santa_Catarina%2C_Brazil-8.jpg",
+      "https://images.unsplash.com/photo-1503919545889-aef636e10ad4?w=400&h=300&fit=crop",
     ],
     [
       "King Vulture",
@@ -694,7 +694,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Mayan legends say it was a king or message-bearer between humans and gods",
       "Rey zamuro",
-      "https://upload.wikimedia.org/wikipedia/commons/3/34/King_Vulture_%28Sarcoramphus_papa%29_adult_head.jpg",
+      "https://images.unsplash.com/photo-1551927336-575d52d6f416?w=400&h=300&fit=crop",
     ],
     [
       "Blue-and-yellow Macaw",
@@ -708,7 +708,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can crack Brazil nuts with 200 psi bite force, use tools in captivity",
       "Guacamayo azul",
-      "https://upload.wikimedia.org/wikipedia/commons/b/b2/Ara_ararauna_-two_captive-8a.jpg",
+      "https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=400&h=300&fit=crop",
     ],
     [
       "Roseate Spoonbill",
@@ -722,7 +722,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Pink color comes from carotenoid pigments in crustaceans they eat",
       "Garza rosada",
-      "https://upload.wikimedia.org/wikipedia/commons/5/51/Roseate_Spoonbill_-_Myakka_River_State_Park.jpg",
+      "https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=400&h=300&fit=crop",
     ],
 
     // Fish
@@ -738,7 +738,7 @@ export function initializeDatabase() {
       "Least Concern",
       "More dangerous when river levels drop and they're concentrated. Usually eat fish.",
       "Palometa",
-      "https://upload.wikimedia.org/wikipedia/commons/5/5b/Piranha_fish.jpg",
+      "https://images.unsplash.com/photo-1535591273668-578e31182c4f?w=400&h=300&fit=crop",
     ],
     [
       "Electric Eel",
@@ -752,7 +752,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can discharge multiple times, uses electricity to stun prey and navigate murky water",
       "Anguila eléctrica",
-      "https://upload.wikimedia.org/wikipedia/commons/1/1c/Electric-eel.jpg",
+      "https://images.unsplash.com/photo-1566328386401-b2980125f6b1?w=400&h=300&fit=crop",
     ],
     [
       "Arapaima",
@@ -766,7 +766,7 @@ export function initializeDatabase() {
       "Data Deficient",
       "Has bony scales like armor, must surface for air every 20 minutes",
       "Pirarucu",
-      "https://upload.wikimedia.org/wikipedia/commons/1/13/Arapaima_gigas_at_Kuda-Kura_Zoo.jpg",
+      "https://images.unsplash.com/photo-1544551763-46a013bb70d5?w=400&h=300&fit=crop",
     ],
     [
       "Candiru",
@@ -780,7 +780,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Feared by locals, documented cases of entering human urethra, nearly impossible to remove",
       "Canero",
-      "https://upload.wikimedia.org/wikipedia/commons/9/98/Vandellia_cirrhosa.jpg",
+      "https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=400&h=300&fit=crop",
     ],
     [
       "Payara",
@@ -794,7 +794,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Fangs fit into sockets in upper jaw, swallows fish whole after impaling them",
       "Cachorra",
-      "https://upload.wikimedia.org/wikipedia/commons/4/41/Hydrolycus_scomberoides.jpg",
+      "https://images.unsplash.com/photo-1524704654690-b56c05c78a00?w=400&h=300&fit=crop",
     ],
     [
       "Discus",
@@ -808,7 +808,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Both parents produce skin secretions to feed their young",
       "Acará disco",
-      "https://upload.wikimedia.org/wikipedia/commons/1/1c/Symphysodon_discus_2009_G1.jpg",
+      "https://images.unsplash.com/photo-1520990269481-c8f33423fad5?w=400&h=300&fit=crop",
     ],
     [
       "Stingray",
@@ -822,7 +822,7 @@ export function initializeDatabase() {
       "Data Deficient",
       "Freshwater stingray, sting is extremely painful and can be fatal if untreated",
       "Raya",
-      "https://upload.wikimedia.org/wikipedia/commons/e/e7/Potamotrygon_motoro_2.jpg",
+      "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=400&h=300&fit=crop",
     ],
 
     // Insects & Arachnids
@@ -838,7 +838,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Named because sting feels like being shot. Indigenous rites use ant gloves for boys to become men.",
       "Hormiga bala",
-      "https://upload.wikimedia.org/wikipedia/commons/f/f3/Paraponera_clavata.jpg",
+      "https://images.unsplash.com/photo-1534388761991-2e276b82e08d?w=400&h=300&fit=crop",
     ],
     [
       "Brazilian Wandering Spider",
@@ -852,7 +852,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Guinness Record for most venomous spider. Venom causes painful erections.",
       "Araña errante",
-      "https://upload.wikimedia.org/wikipedia/commons/6/6c/Phoneutria_fera_in_the_Brazilian_Amazon.jpg",
+      "https://images.unsplash.com/photo-1589559694434-4cb523384110?w=400&h=300&fit=crop",
     ],
     [
       "Morpho Butterfly",
@@ -866,7 +866,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Blue color comes from microscopic scales reflecting light, not pigment",
       "Mariposa azul",
-      "https://upload.wikimedia.org/wikipedia/commons/b/b9/Blue_morpho_butterfly.jpg",
+      "https://images.unsplash.com/photo-1526336024174-e58f5cdd8e13?w=400&h=300&fit=crop",
     ],
     [
       "Leafcutter Ant",
@@ -880,7 +880,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Consume more vegetation than any other animal group in rainforest",
       "Hormiga culona",
-      "https://upload.wikimedia.org/wikipedia/commons/1/17/Atta_cephalotes-pjt.jpg",
+      "https://images.unsplash.com/photo-1558779359-02d90502673d?w=400&h=300&fit=crop",
     ],
     [
       "Titan Beetle",
@@ -894,7 +894,7 @@ export function initializeDatabase() {
       "Data Deficient",
       "Adults don't eat, survive on fat reserves. Larval stage remains unknown.",
       "Escarabajo titán",
-      "https://upload.wikimedia.org/wikipedia/commons/3/35/Titanus_giganteus.jpg",
+      "https://images.unsplash.com/photo-1550859492-d5da9d8e45f3?w=400&h=300&fit=crop",
     ],
     [
       "Owl Butterfly",
@@ -908,7 +908,7 @@ export function initializeDatabase() {
       "Various",
       "Wingspan up to 8 inches, active at dusk when owls hunt",
       "Mariposa búho",
-      "https://upload.wikimedia.org/wikipedia/commons/2/25/Caligo_eurilochus_2.jpg",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop",
     ],
     [
       "Hercules Beetle",
@@ -922,7 +922,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Can carry 850 times their own body weight",
       "Escarabajo hércules",
-      "https://upload.wikimedia.org/wikipedia/commons/4/45/Dynastes_hercules_ecuatorianus_MHNT_Dos.jpg",
+      "https://images.unsplash.com/photo-1568624779048-c7c5f1c8f3d6?w=400&h=300&fit=crop",
     ],
     [
       "Tarantula",
@@ -936,7 +936,7 @@ export function initializeDatabase() {
       "Least Concern",
       "Despite name, mainly eats insects and worms. Hisses by rubbing leg hairs",
       "Tarántula gigante",
-      "https://upload.wikimedia.org/wikipedia/commons/4/4c/Theraphosa_blondi_-_01.JPG",
+      "https://images.unsplash.com/photo-1589195847889-e5c50f9e8dfb?w=400&h=300&fit=crop",
     ],
   ];
 

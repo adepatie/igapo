@@ -239,6 +239,8 @@ async function loadDynamicTurn() {
     // Generate dynamic turn
     const turnData = await apiCall("/dynamic-turn", { state: gameState });
 
+    console.log("=== FULL TURN DATA ===", turnData);
+
     // Update narrative
     narrativeEl.innerHTML = "";
 
@@ -256,6 +258,7 @@ async function loadDynamicTurn() {
       hasAnimalImage: !!turnData.animalImage,
       animalName: turnData.animalName,
       animalImage: turnData.animalImage,
+      fullTurnDataKeys: Object.keys(turnData),
     });
 
     if (turnData.animalName && turnData.animalImage) {

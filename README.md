@@ -1,6 +1,6 @@
 # Amazon Trail Claude Adventure
 
-A text-only, console-based expedition inspired by _Amazon Trail_. Narrative flavor comes from Claude (Anthropic) while an MCP-compatible server manages deterministic game state. Built primarily with modern JavaScript so you can extend it later with audio or visuals for your portfolio.
+An educational text-based expedition game inspired by _Amazon Trail_. Narrative storytelling comes from Claude (Anthropic) while an MCP-compatible server manages game state. Features a 3D web interface with an animated Amazon River scene and educational content about authentic 1930s Amazon wildlife, locations, and indigenous cultures.
 
 ## ✨ Features
 
@@ -85,11 +85,13 @@ The original MCP-based CLI (`src/cli.js`) still works independently using stdio 
 ## 🔭 Next steps
 
 - ✅ 3D web interface with animated Amazon River scene
+- ✅ Educational panel with real Amazon wildlife images and facts
+- ✅ SQLite database with authentic 1930s Amazon locations, animals, and plants
 - Add ambient audio and soundscapes that react to game events
 - Enhance 3D visuals with more biome-specific environments
 - Add camera movements and cinematic transitions between locations
 - Teach Claude to offer strategic hints or let the player ask free-form questions
-- Store completed runs in a database to visualize outcomes in your portfolio
+- Expand the educational database with more species and historical context
 - Add multiplayer/social features
 
 Have fun exploring the river! 🌿
