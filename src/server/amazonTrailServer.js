@@ -172,12 +172,15 @@ server.registerTool(
   "amazon_db.get_random_location",
   {
     title: "Get random Amazon location",
-    description: "Retrieve a random historical Amazon location from the 1930s era database.",
+    description:
+      "Retrieve a random historical Amazon location from the 1930s era database.",
     inputSchema: {},
   },
   async () => {
     try {
-      const location = db.prepare('SELECT * FROM locations ORDER BY RANDOM() LIMIT 1').get();
+      const location = db
+        .prepare("SELECT * FROM locations ORDER BY RANDOM() LIMIT 1")
+        .get();
       return {
         content: [
           {
@@ -199,31 +202,42 @@ server.registerTool(
   "amazon_db.get_random_animals",
   {
     title: "Get random Amazon animals",
-    description: "Retrieve random animals from the Amazon wildlife database. Specify count and optional category filter.",
+    description:
+      "Retrieve random animals from the Amazon wildlife database. Specify count and optional category filter.",
     inputSchema: {
       count: z.number().min(1).max(10).default(3),
-      category: z.enum(['mammal', 'reptile', 'bird', 'fish', 'insect', 'arachnid', 'amphibian']).optional(),
-      dangerLevel: z.enum(['low', 'medium', 'high', 'extreme']).optional(),
+      category: z
+        .enum([
+          "mammal",
+          "reptile",
+          "bird",
+          "fish",
+          "insect",
+          "arachnid",
+          "amphibian",
+        ])
+        .optional(),
+      dangerLevel: z.enum(["low", "medium", "high", "extreme"]).optional(),
     },
   },
   async ({ count = 3, category, dangerLevel }) => {
     try {
-      let query = 'SELECT * FROM animals WHERE 1=1';
+      let query = "SELECT * FROM animals WHERE 1=1";
       const params = [];
-      
+
       if (category) {
-        query += ' AND category = ?';
+        query += " AND category = ?";
         params.push(category);
       }
-      
+
       if (dangerLevel) {
-        query += ' AND danger_level = ?';
+        query += " AND danger_level = ?";
         params.push(dangerLevel);
       }
-      
-      query += ' ORDER BY RANDOM() LIMIT ?';
+
+      query += " ORDER BY RANDOM() LIMIT ?";
       params.push(count);
-      
+
       const animals = db.prepare(query).all(...params);
       return {
         content: [
@@ -254,16 +268,16 @@ server.registerTool(
   },
   async ({ count = 2, medicinal }) => {
     try {
-      let query = 'SELECT * FROM plants';
+      let query = "SELECT * FROM plants";
       const params = [];
-      
+
       if (medicinal !== undefined) {
-        query += ' WHERE medicinal_use IS NOT NULL';
+        query += " WHERE medicinal_use IS NOT NULL";
       }
-      
-      query += ' ORDER BY RANDOM() LIMIT ?';
+
+      query += " ORDER BY RANDOM() LIMIT ?";
       params.push(count);
-      
+
       const plants = db.prepare(query).all(...params);
       return {
         content: [
@@ -288,13 +302,13 @@ server.registerTool(
     title: "Search database by name",
     description: "Search for locations, animals, or plants by name pattern.",
     inputSchema: {
-      table: z.enum(['locations', 'animals', 'plants']),
+      table: z.enum(["locations", "animals", "plants"]),
       searchTerm: z.string().min(1),
     },
   },
   async ({ table, searchTerm }) => {
     try {
-      const nameColumn = table === 'locations' ? 'name' : 'common_name';
+      const nameColumn = table === "locations" ? "name" : "common_name";
       const query = `SELECT * FROM ${table} WHERE ${nameColumn} LIKE ? LIMIT 10`;
       const results = db.prepare(query).all(`%${searchTerm}%`);
       return {
@@ -318,7 +332,8 @@ server.registerTool(
   "amazon_db.get_location_details",
   {
     title: "Get specific location details",
-    description: "Get detailed information about a specific Amazon location by ID or name.",
+    description:
+      "Get detailed information about a specific Amazon location by ID or name.",
     inputSchema: {
       identifier: z.union([z.number(), z.string()]),
     },
@@ -326,19 +341,23 @@ server.registerTool(
   async ({ identifier }) => {
     try {
       let location;
-      if (typeof identifier === 'number') {
-        location = db.prepare('SELECT * FROM locations WHERE id = ?').get(identifier);
+      if (typeof identifier === "number") {
+        location = db
+          .prepare("SELECT * FROM locations WHERE id = ?")
+          .get(identifier);
       } else {
-        location = db.prepare('SELECT * FROM locations WHERE name LIKE ?').get(`%${identifier}%`);
+        location = db
+          .prepare("SELECT * FROM locations WHERE name LIKE ?")
+          .get(`%${identifier}%`);
       }
-      
+
       if (!location) {
         return {
           content: [{ type: "text", text: "Location not found" }],
           isError: true,
         };
       }
-      
+
       return {
         content: [
           {

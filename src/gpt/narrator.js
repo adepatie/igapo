@@ -106,36 +106,48 @@ Describe what happens next in 2-3 vivid sentences. Focus on the encounter and it
 
   async generateDynamicTurn(state, mcpTools = null) {
     const location = state.route[state.progress] ?? state.route.at(-1);
-    const recentJournal = state.journal.slice(-3).map(entry => 
-      entry.kind === 'encounter' ? entry.encounter.title : entry.kind
-    ).join(', ');
+    const recentJournal = state.journal
+      .slice(-3)
+      .map((entry) =>
+        entry.kind === "encounter" ? entry.encounter.title : entry.kind
+      )
+      .join(", ");
 
     // Fetch authentic Amazon data from database if MCP tools available
     let locationData = null;
     let animalsData = [];
     let plantsData = [];
-    
+
     if (mcpTools) {
       try {
         // Get random location details for context
-        const locationResult = await mcpTools.call("amazon_db.get_random_location", {});
+        const locationResult = await mcpTools.call(
+          "amazon_db.get_random_location",
+          {}
+        );
         if (locationResult?.content?.[0]?.text) {
           locationData = JSON.parse(locationResult.content[0].text);
         }
-        
+
         // Get 2-3 random animals for potential encounters
-        const animalsResult = await mcpTools.call("amazon_db.get_random_animals", { count: 3 });
+        const animalsResult = await mcpTools.call(
+          "amazon_db.get_random_animals",
+          { count: 3 }
+        );
         if (animalsResult?.content?.[0]?.text) {
           animalsData = JSON.parse(animalsResult.content[0].text);
         }
-        
+
         // Get 1-2 plants for medicinal/foraging encounters
-        const plantsResult = await mcpTools.call("amazon_db.get_random_plants", { count: 2, medicinal: true });
+        const plantsResult = await mcpTools.call(
+          "amazon_db.get_random_plants",
+          { count: 2, medicinal: true }
+        );
         if (plantsResult?.content?.[0]?.text) {
           plantsData = JSON.parse(plantsResult.content[0].text);
         }
       } catch (error) {
-        console.error('Failed to fetch database content:', error);
+        console.error("Failed to fetch database content:", error);
         // Continue without database data if it fails
       }
     }
@@ -176,12 +188,12 @@ RULES:
 9. **KEEP DESCRIPTIONS SHORT** - label ≤ 5 words, description ≤ 15 words, reward narratives ≤ 12 words
 10. NO MARKDOWN, NO CODE BLOCKS - Return ONLY valid JSON
 
-JSON Format:
+JSON Format (ALWAYS include animalName and scientificName when featuring wildlife):
 {
   "narrative": "Story with educational fact naturally integrated",
   "educationalNote": "Quick factoid for player (optional, shows in small text)",
-  "animalName": "Common name of featured animal (if any)",
-  "scientificName": "Scientific name (if featuring animal)",
+  "animalName": "Jaguar",
+  "scientificName": "Panthera onca",
   "choices": [
     {
       "id": "unique_id",
@@ -198,21 +210,21 @@ JSON Format:
 }`;
 
     // Determine story phase
-    let storyPhase = 'early';
-    let urgency = '';
+    let storyPhase = "early";
+    let urgency = "";
     if (state.daysElapsed >= 15) {
-      storyPhase = 'late';
-      urgency = 'Grandmother is critical. Time is running out!';
+      storyPhase = "late";
+      urgency = "Grandmother is critical. Time is running out!";
     } else if (state.daysElapsed >= 8) {
-      storyPhase = 'mid';
-      urgency = 'Word arrives: grandmother is weakening.';
+      storyPhase = "mid";
+      urgency = "Word arrives: grandmother is weakening.";
     } else if (state.daysElapsed >= 4) {
-      storyPhase = 'early-mid';
-      urgency = 'The mission weighs heavy. You must hurry.';
+      storyPhase = "early-mid";
+      urgency = "The mission weighs heavy. You must hurry.";
     }
 
     // Build database context for Claude
-    let databaseContext = '';
+    let databaseContext = "";
     if (locationData) {
       databaseContext += `\n\nAUTHENTIC LOCATION DATA (use for historical accuracy):
 - Name: ${locationData.name} (Founded: ${locationData.year_founded})
@@ -221,36 +233,36 @@ JSON Format:
 - Historical note: ${locationData.historical_note}
 - Notable features: ${locationData.notable_features}`;
     }
-    
+
     if (animalsData.length > 0) {
       databaseContext += `\n\nAVAILABLE WILDLIFE (select ONE to feature):`;
-      animalsData.forEach(animal => {
+      animalsData.forEach((animal) => {
         databaseContext += `\n- ${animal.common_name} (${animal.scientific_name}, Indigenous: ${animal.indigenous_name})
   Category: ${animal.category}, Danger: ${animal.danger_level}
   Behavior: ${animal.behavior}
   Fact: ${animal.interesting_fact}`;
       });
     }
-    
+
     if (plantsData.length > 0) {
       databaseContext += `\n\nMEDICINAL PLANTS (for healing/foraging encounters):`;
-      plantsData.forEach(plant => {
+      plantsData.forEach((plant) => {
         databaseContext += `\n- ${plant.common_name} (${plant.scientific_name})
   Indigenous use: ${plant.medicinal_use}
-  Modern relevance: ${plant.modern_applications || 'Traditional use only'}`;
+  Modern relevance: ${plant.modern_applications || "Traditional use only"}`;
       });
     }
 
     // Build context about what player has collected/learned
-    let playerContext = '';
+    let playerContext = "";
     if (state.inventory && state.inventory.length > 0) {
-      playerContext += `\n- Items collected: ${state.inventory.join(', ')}`;
+      playerContext += `\n- Items collected: ${state.inventory.join(", ")}`;
     }
     if (state.crew && state.crew.length > 0) {
-      playerContext += `\n- Crew members: ${state.crew.join(', ')}`;
+      playerContext += `\n- Crew members: ${state.crew.join(", ")}`;
     }
     if (state.knowledge && state.knowledge.length > 0) {
-      playerContext += `\n- Knowledge gained: ${state.knowledge.join(', ')}`;
+      playerContext += `\n- Knowledge gained: ${state.knowledge.join(", ")}`;
     }
 
     const userPrompt = `Current State:
@@ -258,26 +270,47 @@ JSON Format:
 - Description: ${location.description}
 - Days: ${state.daysElapsed} (${storyPhase} phase)
 - Progress: ${state.progress}/${state.route.length - 1} locations
-- Morale: ${state.morale}/100, Stamina: ${state.stamina}/100, Supplies: ${state.supplies}
-- Recent events: ${recentJournal || 'none yet'}
-- Last action: ${state.lastAction?.label || 'journey beginning'}${playerContext}
-${urgency ? `- URGENCY: ${urgency}` : ''}${databaseContext}
+- Morale: ${state.morale}/100, Stamina: ${state.stamina}/100, Supplies: ${
+      state.supplies
+    }
+- Recent events: ${recentJournal || "none yet"}
+- Last action: ${state.lastAction?.label || "journey beginning"}${playerContext}
+${urgency ? `- URGENCY: ${urgency}` : ""}${databaseContext}
 
 Generate an encounter that:
 1. Fits the ${storyPhase} story phase
-2. ${locationData || animalsData.length > 0 || plantsData.length > 0 ? 'Uses the AUTHENTIC DATA above (animals, plants, or location facts) - reference scientific names, indigenous knowledge, and real behaviors' : 'Includes ONE educational fact about the Amazon (naturally woven in, not forced)'}
-3. References the mission to find Lágrimas da Lua ${storyPhase === 'late' ? '(maybe a clue or lead!)' : storyPhase === 'mid' ? '(perhaps indigenous knowledge helps)' : '(subtly)'}
+2. ${
+      locationData || animalsData.length > 0 || plantsData.length > 0
+        ? "Uses the AUTHENTIC DATA above (animals, plants, or location facts) - reference scientific names, indigenous knowledge, and real behaviors"
+        : "Includes ONE educational fact about the Amazon (naturally woven in, not forced)"
+    }
+3. References the mission to find Lágrimas da Lua ${
+      storyPhase === "late"
+        ? "(maybe a clue or lead!)"
+        : storyPhase === "mid"
+        ? "(perhaps indigenous knowledge helps)"
+        : "(subtly)"
+    }
 4. Offers 3 meaningful choices with clear moral/strategic trade-offs
-5. Is completely different from: ${recentJournal || 'none'}
+5. Is completely different from: ${recentJournal || "none"}
 6. **CRITICAL**: Create UNIQUE encounters each turn! Consider: 
    - Has player met indigenous people yet? (Check crew/knowledge)
    - Has player collected medicinal plants? (Check inventory)
    - Time of day varies (dawn, noon, dusk, night) - mention it!
    - Weather changes (rain, fog, heat, storms)
    - River conditions shift (calm, rapids, flooded forest)
-7. **IF FEATURING AN ANIMAL**: Include "animalName" and "scientificName" fields matching EXACTLY the names from database above
 
-${locationData || animalsData.length > 0 ? 'IMPORTANT: Use the real animal/location data provided above to make this educational and authentic. Reference indigenous names, scientific facts, and historical context. When featuring an animal, copy its common_name and scientific_name EXACTLY to animalName and scientificName fields.' : 'Be creative, educational, and emotionally engaging!'}`;
+**CRITICAL FOR ANIMAL ENCOUNTERS**: 
+- If you feature ANY animal from the list above, you MUST include these exact fields in JSON:
+  - "animalName": "<copy exact common_name from database>"
+  - "scientificName": "<copy exact scientific_name from database>"
+- Example: "animalName": "Pink River Dolphin", "scientificName": "Inia geoffrensis"
+
+${
+  locationData || animalsData.length > 0
+    ? "IMPORTANT: Use the real animal/location data provided above to make this educational and authentic. Reference indigenous names, scientific facts, and historical context. When featuring an animal, copy its common_name and scientific_name EXACTLY to animalName and scientificName fields."
+    : "Be creative, educational, and emotionally engaging!"
+}`;
 
     const completion = await this.client.messages.create({
       model: this.model,
@@ -292,47 +325,54 @@ ${locationData || animalsData.length > 0 ? 'IMPORTANT: Use the real animal/locat
     });
 
     const responseText = completion.content[0]?.text ?? "{}";
-    
+
     try {
       // Clean up any markdown code blocks
       let cleanedText = responseText.trim();
-      if (cleanedText.startsWith('```')) {
-        cleanedText = cleanedText.replace(/```json?\n?/g, '').replace(/```\n?$/g, '');
+      if (cleanedText.startsWith("```")) {
+        cleanedText = cleanedText
+          .replace(/```json?\n?/g, "")
+          .replace(/```\n?$/g, "");
       }
-      
+
       const result = JSON.parse(cleanedText);
-      
+
       // Validate structure
-      if (!result.narrative || !Array.isArray(result.choices) || result.choices.length === 0) {
-        throw new Error('Invalid response structure');
+      if (
+        !result.narrative ||
+        !Array.isArray(result.choices) ||
+        result.choices.length === 0
+      ) {
+        throw new Error("Invalid response structure");
       }
-      
+
       return result;
     } catch (error) {
-      console.error('Failed to parse Claude response:', responseText, error);
+      console.error("Failed to parse Claude response:", responseText, error);
       // Fallback to a safe default
       return {
-        narrative: "The river flows steadily ahead. Your crew awaits your decision.",
+        narrative:
+          "The river flows steadily ahead. Your crew awaits your decision.",
         choices: [
           {
             id: "paddle",
             label: "Continue paddling",
             description: "Push forward down the river",
-            deltas: { progress: 1, stamina: -5, supplies: -3 }
+            deltas: { progress: 1, stamina: -5, supplies: -3 },
           },
           {
             id: "rest",
             label: "Rest briefly",
             description: "Take a moment to recover",
-            deltas: { stamina: 5, morale: 3, supplies: -2 }
+            deltas: { stamina: 5, morale: 3, supplies: -2 },
           },
           {
             id: "forage",
             label: "Look for supplies",
             description: "Search the riverbank",
-            deltas: { supplies: 8, stamina: -4 }
-          }
-        ]
+            deltas: { supplies: 8, stamina: -4 },
+          },
+        ],
       };
     }
   }

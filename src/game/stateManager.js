@@ -11,7 +11,8 @@ const ROUTE = [
     id: "nauta",
     name: "Nauta Rapids",
     biome: "whitewater passage",
-    description: "Churning waters test your skill as the river narrows through rocky channels.",
+    description:
+      "Churning waters test your skill as the river narrows through rocky channels.",
   },
   {
     id: "selva",
@@ -23,7 +24,8 @@ const ROUTE = [
     id: "pacaya",
     name: "Pacaya-Samiria Reserve",
     biome: "protected wilderness",
-    description: "The 'Jungle of Mirrors' - flooded forests reflecting endless sky.",
+    description:
+      "The 'Jungle of Mirrors' - flooded forests reflecting endless sky.",
   },
   {
     id: "yanayacu",
@@ -35,31 +37,36 @@ const ROUTE = [
     id: "iquitos",
     name: "Iquitos Outpost",
     biome: "riverside settlement",
-    description: "A remote trading post where river folk share stories and supplies.",
+    description:
+      "A remote trading post where river folk share stories and supplies.",
   },
   {
     id: "manu",
     name: "Manu Canopy",
     biome: "towering jungle",
-    description: "Macaws flare overhead as howler monkeys announce your arrival.",
+    description:
+      "Macaws flare overhead as howler monkeys announce your arrival.",
   },
   {
     id: "tambopata",
     name: "Tambopata Clay Lick",
     biome: "parrot gathering site",
-    description: "Hundreds of parrots descend on mineral-rich clay banks in a riot of color.",
+    description:
+      "Hundreds of parrots descend on mineral-rich clay banks in a riot of color.",
   },
   {
     id: "madeira",
     name: "Madeira Confluence",
     biome: "river junction",
-    description: "Two great rivers merge in a swirling dance of brown and blue waters.",
+    description:
+      "Two great rivers merge in a swirling dance of brown and blue waters.",
   },
   {
     id: "santarem",
     name: "Santarém Meeting of Waters",
     biome: "natural phenomenon",
-    description: "The Amazon and Tapajós rivers flow side-by-side without mixing for miles.",
+    description:
+      "The Amazon and Tapajós rivers flow side-by-side without mixing for miles.",
   },
   {
     id: "altar",
@@ -71,7 +78,8 @@ const ROUTE = [
     id: "para",
     name: "Pará Estuary",
     biome: "tidal delta",
-    description: "The river widens into a shimmering horizon. The legendary flower awaits.",
+    description:
+      "The river widens into a shimmering horizon. The legendary flower awaits.",
   },
 ];
 
@@ -120,8 +128,8 @@ export const createInitialState = (playerName = "Explorer") => ({
     objective: "Find Lágrimas da Lua (Tears of the Moon)",
     reason: "Save dying grandmother",
     cluesFound: 0,
-    indigenousKnowledge: []
-  }
+    indigenousKnowledge: [],
+  },
 });
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
