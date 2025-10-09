@@ -44,21 +44,6 @@ An educational text-based expedition game inspired by _Amazon Trail_. Narrative 
 
 > **No Anthropic key?** The game still runs with a lightweight offline narrator so you can demo the mechanics without remote calls.
 
-## 🧠 How it works
-
-```mermaid
-graph TD;
-  CLI[CLI Runner] -->|spawn stdio| MCPServer[MCP Server];
-  CLI -->|tool calls| MCPServer;
-  MCPServer -->|state payload| CLI;
-  CLI -->|prompts| Claude[Narrator (Claude)];
-  Claude -->|narration text| CLI;
-```
-
-- The CLI connects via `StdioClientTransport`, so the server can be swapped for a remote process without code changes.
-- After each action the CLI asks the MCP server for updated state, then prompts Claude to narrate using the structured payload.
-- Encounters are pseudo-random (cryptographically seeded) but always bounded to keep Claude consistent.
-
 ## 🧪 Checks
 
 Run a quick syntax sweep:
