@@ -2,6 +2,12 @@
 
 An educational text-based expedition game inspired by _Amazon Trail_. Narrative storytelling comes from Claude (Anthropic) while an MCP-compatible server manages game state. Features a 3D web interface with an animated Amazon River scene and educational content about authentic 1930s Amazon wildlife, locations, and indigenous cultures.
 
+## ⚠️ Experimental Project Notice
+
+**This project is an experimental exploration of AI-assisted coding and the Model Context Protocol (MCP).** It was created to test and demonstrate how AI tools can help build interactive applications that integrate with Claude through MCP.
+
+**Not Production Ready:** This is a proof-of-concept and experimental codebase. It requires cleanup, refactoring, and hardening before it would be suitable for production use. Expect rough edges, incomplete features, and areas that need optimization.
+
 ## ✨ Features
 
 - **MCP Server** (`src/server/amazonTrailServer.js`) exposes game state, actions, and turn resolution as Model Context Protocol tools.
