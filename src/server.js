@@ -28,8 +28,7 @@ const JOURNEY_LOCATIONS = [
     biome: "confluence",
     description:
       "Steam rises where the Rio Negro meets the Solimões, painting a line of bronze across the water.",
-    fact:
-      "The Meeting of Waters flows side by side for nearly 6 kilometers before mixing.",
+    fact: "The Meeting of Waters flows side by side for nearly 6 kilometers before mixing.",
     outcome: "calm",
   },
   {
@@ -37,8 +36,7 @@ const JOURNEY_LOCATIONS = [
     biome: "rainforest",
     description:
       "A maze of 400 emerald islands scatters moonlight into silver trails.",
-    fact:
-      "Anavilhanas is one of the world's largest freshwater archipelagos, home to pink river dolphins.",
+    fact: "Anavilhanas is one of the world's largest freshwater archipelagos, home to pink river dolphins.",
     outcome: "mystery",
   },
   {
@@ -46,8 +44,7 @@ const JOURNEY_LOCATIONS = [
     biome: "white-sand forest",
     description:
       "Quiet sandbars glow ivory while forest cicadas pulse like a heartbeat in the canopy.",
-    fact:
-      "Tapajós waters run clear thanks to ancient sandstone filtering the flow for millennia.",
+    fact: "Tapajós waters run clear thanks to ancient sandstone filtering the flow for millennia.",
     outcome: "success",
   },
 ];
@@ -149,14 +146,19 @@ function buildJourneyState({ seed, step, previousJournal }, choiceId) {
     100,
     Math.max(0, 65 + Math.round(rng() * 12) + appliedDeltas.stamina)
   );
-  const supplies = Math.max(0, 55 + Math.round(rng() * 8) + appliedDeltas.supplies);
+  const supplies = Math.max(
+    0,
+    55 + Math.round(rng() * 8) + appliedDeltas.supplies
+  );
 
   const journalEntries = previousJournal ? [...previousJournal] : [];
   if (choiceId) {
     journalEntries.push({
       id: `journal-${day}`,
       day,
-      text: `Day ${day}: Chose ${choiceId.replace(/-/g, " ")}. ${location.description}`,
+      text: `Day ${day}: Chose ${choiceId.replace(/-/g, " ")}. ${
+        location.description
+      }`,
     });
   }
 
@@ -171,7 +173,8 @@ function buildJourneyState({ seed, step, previousJournal }, choiceId) {
     stamina,
     supplies,
     outcome: choiceId
-      ? JOURNEY_CHOICES.find((choice) => choice.id === choiceId)?.mood ?? location.outcome
+      ? JOURNEY_CHOICES.find((choice) => choice.id === choiceId)?.mood ??
+        location.outcome
       : location.outcome,
     choices: baseChoiceSet,
     facts: [fact],
@@ -184,7 +187,10 @@ function buildJourneyState({ seed, step, previousJournal }, choiceId) {
     paragraphs: [
       `Crew morale steadies as ${location.description}`,
       choiceId
-        ? `Your decision to ${choiceId.replace(/-/g, " ")} reveals new currents threading toward the legendary Lágrimas da Lua.`
+        ? `Your decision to ${choiceId.replace(
+            /-/g,
+            " "
+          )} reveals new currents threading toward the legendary Lágrimas da Lua.`
         : `Rumors along the river whisper of the Lágrimas da Lua blooming deeper in the basin.`,
     ],
     outcome: state.outcome,
