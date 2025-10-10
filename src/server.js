@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
+import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { createHash } from "crypto";
 import {
   createInitialState,
   applyAction,
@@ -19,6 +21,220 @@ const PORT = process.env.PORT || 3001;
 // Initialize database
 const db = initializeDatabase();
 console.log("✅ Database initialized with Amazon data");
+
+const JOURNEY_LOCATIONS = [
+  {
+    name: "Manaus Docks",
+    biome: "confluence",
+    description:
+      "Steam rises where the Rio Negro meets the Solimões, painting a line of bronze across the water.",
+    fact:
+      "The Meeting of Waters flows side by side for nearly 6 kilometers before mixing.",
+    outcome: "calm",
+  },
+  {
+    name: "Anavilhanas Archipelago",
+    biome: "rainforest",
+    description:
+      "A maze of 400 emerald islands scatters moonlight into silver trails.",
+    fact:
+      "Anavilhanas is one of the world's largest freshwater archipelagos, home to pink river dolphins.",
+    outcome: "mystery",
+  },
+  {
+    name: "Tapajós Tributary",
+    biome: "white-sand forest",
+    description:
+      "Quiet sandbars glow ivory while forest cicadas pulse like a heartbeat in the canopy.",
+    fact:
+      "Tapajós waters run clear thanks to ancient sandstone filtering the flow for millennia.",
+    outcome: "success",
+  },
+];
+
+const JOURNEY_FACTS = [
+  "The Amazon River moves 20% of Earth's fresh river water into the Atlantic.",
+  "Over 400 indigenous groups call the Amazon basin home, each with distinct languages.",
+  "Giant kapok trees can tower 200 feet, sheltering entire vertical ecosystems in their branches.",
+  "Pink river dolphins use echolocation to navigate flooded forests during the wet season.",
+  "The rainforest canopy recycles half of its rainfall back into the atmosphere each day.",
+];
+
+const JOURNEY_CHOICES = [
+  {
+    id: "chart-tributary",
+    label: "Chart a hidden tributary",
+    description: "Skim the flooded groves for a faster route",
+    mood: "mystery",
+    deltas: { morale: 2, stamina: -4, supplies: -2 },
+  },
+  {
+    id: "collect-specimens",
+    label: "Collect specimens",
+    description: "Document flora with the science crew",
+    mood: "success",
+    deltas: { morale: 3, stamina: -3, supplies: -1 },
+  },
+  {
+    id: "set-camp",
+    label: "Set camp and rest",
+    description: "Let hammocks swing between buttress roots",
+    mood: "calm",
+    deltas: { morale: 1, stamina: 5, supplies: -3 },
+  },
+];
+
+const journeySessions = new Map();
+
+function toNumberSeed(seedValue) {
+  let hash = 1779033703 ^ seedValue.length;
+  for (let i = 0; i < seedValue.length; i += 1) {
+    hash = Math.imul(hash ^ seedValue.charCodeAt(i), 3432918353);
+    hash = (hash << 13) | (hash >>> 19);
+  }
+  hash =
+    Math.imul(hash ^ (hash >>> 16), 2246822507) ^
+    Math.imul(hash ^ (hash >>> 13), 3266489909);
+  return (hash ^= hash >>> 16) >>> 0;
+}
+
+function mulberry32(a) {
+  return function rng() {
+    let t = (a += 0x6d2b79f5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pickFrom(array, rng) {
+  return array[Math.floor(rng() * array.length) % array.length];
+}
+
+function computeStateHash(seed, step, choiceId) {
+  return createHash("sha256")
+    .update(`${seed}:${step}:${choiceId ?? "start"}`)
+    .digest("hex")
+    .slice(0, 16);
+}
+
+function buildJourneyState({ seed, step, previousJournal }, choiceId) {
+  const key = `${seed}:${step}:${choiceId ?? "start"}`;
+  const rng = mulberry32(toNumberSeed(key));
+  const day = step + 1;
+  const location = pickFrom(JOURNEY_LOCATIONS, rng);
+  const fact = pickFrom(JOURNEY_FACTS, rng);
+  const baseChoiceSet = JOURNEY_CHOICES.map((choice) => ({
+    ...choice,
+    mood: choice.mood,
+  }));
+  for (let i = baseChoiceSet.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [baseChoiceSet[i], baseChoiceSet[j]] = [baseChoiceSet[j], baseChoiceSet[i]];
+  }
+
+  const appliedDeltas = choiceId
+    ? JOURNEY_CHOICES.find((choice) => choice.id === choiceId)?.deltas ?? {
+        morale: 0,
+        stamina: 0,
+        supplies: 0,
+      }
+    : { morale: 0, stamina: 0, supplies: 0 };
+
+  const morale = Math.min(
+    100,
+    Math.max(0, 70 + Math.round(rng() * 10) + appliedDeltas.morale)
+  );
+  const stamina = Math.min(
+    100,
+    Math.max(0, 65 + Math.round(rng() * 12) + appliedDeltas.stamina)
+  );
+  const supplies = Math.max(0, 55 + Math.round(rng() * 8) + appliedDeltas.supplies);
+
+  const journalEntries = previousJournal ? [...previousJournal] : [];
+  if (choiceId) {
+    journalEntries.push({
+      id: `journal-${day}`,
+      day,
+      text: `Day ${day}: Chose ${choiceId.replace(/-/g, " ")}. ${location.description}`,
+    });
+  }
+
+  const stateHash = computeStateHash(seed, step, choiceId);
+
+  const state = {
+    hash: stateHash,
+    day,
+    location: location.name,
+    biome: location.biome,
+    morale,
+    stamina,
+    supplies,
+    outcome: choiceId
+      ? JOURNEY_CHOICES.find((choice) => choice.id === choiceId)?.mood ?? location.outcome
+      : location.outcome,
+    choices: baseChoiceSet,
+    facts: [fact],
+    journal: journalEntries,
+  };
+
+  const prose = {
+    title: `${location.name}, Day ${day}`,
+    summary: `The expedition drifts past ${location.name}, where ${fact}`,
+    paragraphs: [
+      `Crew morale steadies as ${location.description}`,
+      choiceId
+        ? `Your decision to ${choiceId.replace(/-/g, " ")} reveals new currents threading toward the legendary Lágrimas da Lua.`
+        : `Rumors along the river whisper of the Lágrimas da Lua blooming deeper in the basin.`,
+    ],
+    outcome: state.outcome,
+    facts: [fact],
+  };
+
+  return { state, prose };
+}
+
+function createJourney(seed) {
+  const normalizedSeed = seed?.toString().trim() || "default-seed";
+  const { state, prose } = buildJourneyState({
+    seed: normalizedSeed,
+    step: 0,
+    previousJournal: [],
+  });
+
+  journeySessions.set(state.hash, {
+    seed: normalizedSeed,
+    step: 1,
+    journal: state.journal,
+  });
+
+  return { state, prose };
+}
+
+function advanceJourney(previousHash, choiceId) {
+  const session = journeySessions.get(previousHash);
+  if (!session) {
+    return null;
+  }
+
+  const { state, prose } = buildJourneyState(
+    {
+      seed: session.seed,
+      step: session.step,
+      previousJournal: session.journal,
+    },
+    choiceId
+  );
+
+  journeySessions.delete(previousHash);
+  journeySessions.set(state.hash, {
+    seed: session.seed,
+    step: session.step + 1,
+    journal: state.journal,
+  });
+
+  return { state, prose };
+}
 
 // Create simple MCP-like tools interface for narrator
 const mcpTools = {
@@ -97,6 +313,37 @@ app.use(express.json());
 
 // Initialize narrator
 const narrator = new Narrator();
+
+app.get("/start", (req, res) => {
+  try {
+    const { seed } = req.query;
+    const payload = createJourney(seed ? String(seed) : undefined);
+    return res.json(payload);
+  } catch (error) {
+    console.error("Error creating journey:", error);
+    return res.status(500).json({
+      error: "Failed to launch the expedition. Please try again.",
+    });
+  }
+});
+
+app.post("/turn", (req, res) => {
+  const { choice_id: choiceId, prev_state_hash: previousHash } = req.body ?? {};
+  if (!choiceId || !previousHash) {
+    return res.status(400).json({
+      error: "choice_id and prev_state_hash are required.",
+    });
+  }
+
+  const result = advanceJourney(previousHash, String(choiceId));
+  if (!result) {
+    return res.status(409).json({
+      error: "The expedition state was not found. Restart the journey.",
+    });
+  }
+
+  return res.json(result);
+});
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -358,18 +605,26 @@ app.post("/api/apply-choice", async (req, res) => {
   }
 });
 
-// Serve static files from public directory (after API routes)
-app.use(express.static(path.join(__dirname, "../public")));
+const distPath = path.join(__dirname, "../dist");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
 
-// Serve index.html for all other non-API routes (SPA support)
-app.get("*", (req, res) => {
-  // Only serve HTML for non-API routes
-  if (!req.path.startsWith("/api")) {
-    res.sendFile(path.join(__dirname, "../public/index.html"));
-  } else {
-    res.status(404).json({ error: "API endpoint not found" });
-  }
-});
+  app.get("*", (req, res, next) => {
+    if (
+      req.path.startsWith("/api") ||
+      req.path.startsWith("/start") ||
+      req.path.startsWith("/turn")
+    ) {
+      return next();
+    }
+
+    const indexPath = path.join(distPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath);
+    }
+    return res.status(404).send("Frontend build not found");
+  });
+}
 
 // Start server
 app.listen(PORT, () => {
