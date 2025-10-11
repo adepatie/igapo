@@ -13,7 +13,7 @@ Vary your descriptions based on previous events to keep the experience fresh.`;
 const buildActionContext = ({ stateSummary, encounter, action }) => {
   const locationLine = `${stateSummary.location} — ${stateSummary.biome}`;
   const vitalsLine = `Morale ${stateSummary.morale}/100 · Stamina ${stateSummary.stamina}/100 · Supplies ${stateSummary.supplies}`;
-  const statusLine = `Days elapsed: ${stateSummary.daysElapsed}. Status: ${stateSummary.status}`;
+  const statusLine = `Status: ${stateSummary.status}`; // TODO: Add days when camping is implemented
   const encounterLine = encounter
     ? `${encounter.title}: ${encounter.narrative}`
     : "No special encounter on this segment.";
@@ -79,7 +79,17 @@ Be vivid, concise, and set the stakes high.`;
       ],
     });
 
-    return completion.content[0]?.text ?? "";
+    const text = completion.content[0]?.text ?? "";
+
+    // Split text into paragraphs for the frontend
+    const paragraphs = text.split("\n\n").filter((p) => p.trim().length > 0);
+
+    // Return a Narrative object
+    return {
+      summary: paragraphs[0] || text.substring(0, 100),
+      paragraphs,
+      mood: "neutral",
+    };
   }
 
   async narrateTurn(context) {
@@ -101,7 +111,17 @@ Describe what happens next in 2-3 vivid sentences. Focus on the encounter and it
       ],
     });
 
-    return completion.content[0]?.text ?? "";
+    const text = completion.content[0]?.text ?? "";
+
+    // Split text into paragraphs for the frontend
+    const paragraphs = text.split("\n\n").filter((p) => p.trim().length > 0);
+
+    // Return a Narrative object
+    return {
+      summary: paragraphs[0] || text.substring(0, 100),
+      paragraphs,
+      mood: "neutral",
+    };
   }
 
   async generateDynamicTurn(state, mcpTools = null) {
@@ -209,16 +229,17 @@ JSON Format (ALWAYS include animalName and scientificName when featuring wildlif
   ]
 }`;
 
-    // Determine story phase
+    // TODO: Story phase will be determined by progress/events instead of days
+    // Determine story phase based on progress for now
     let storyPhase = "early";
     let urgency = "";
-    if (state.daysElapsed >= 15) {
+    if (state.progress >= 70) {
       storyPhase = "late";
       urgency = "Grandmother is critical. Time is running out!";
-    } else if (state.daysElapsed >= 8) {
+    } else if (state.progress >= 40) {
       storyPhase = "mid";
       urgency = "Word arrives: grandmother is weakening.";
-    } else if (state.daysElapsed >= 4) {
+    } else if (state.progress >= 20) {
       storyPhase = "early-mid";
       urgency = "The mission weighs heavy. You must hurry.";
     }
@@ -268,8 +289,9 @@ JSON Format (ALWAYS include animalName and scientificName when featuring wildlif
     const userPrompt = `Current State:
 - Location: ${location.name} (${location.biome})
 - Description: ${location.description}
-- Days: ${state.daysElapsed} (${storyPhase} phase)
-- Progress: ${state.progress}/${state.route.length - 1} locations
+- Progress: ${state.progress}/${
+      state.route.length - 1
+    } locations (${storyPhase} phase)
 - Morale: ${state.morale}/100, Stamina: ${state.stamina}/100, Supplies: ${
       state.supplies
     }

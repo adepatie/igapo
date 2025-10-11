@@ -1,19 +1,46 @@
 import express from "express";
 import cors from "cors";
+import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createHash } from "crypto";
-import {
-  createInitialState,
-  applyAction,
-  getAvailableActions,
-} from "./game/stateManager.js";
+import { createInitialState, applyAction } from "./game/stateManager.js";
 import { Narrator } from "./gpt/narrator.js";
+import { DialogueNarrator } from "./gpt/dialogueNarrator.js";
 import { initializeDatabase } from "./database/initDatabase.js";
+import {
+  getCharacterForScene,
+  getCharacterById,
+  parseCharacterData,
+} from "./database/characterQueries.js";
+import { registerAllTools } from "./mcp/server.js";
+import {
+  validatePlayerName,
+  validateGameState,
+  validateCharacterId,
+  validationErrorHandler,
+  asyncHandler,
+  ValidationError,
+} from "./utils/validation.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config();
+
+// Validate required environment variables
+const requiredEnvVars = ["ANTHROPIC_API_KEY"];
+const missingEnvVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
+
+if (missingEnvVars.length > 0) {
+  console.error(
+    `❌ Missing required environment variables: ${missingEnvVars.join(", ")}`
+  );
+  console.error("Please create a .env file with the required variables.");
+  process.exit(1);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -21,6 +48,9 @@ const PORT = process.env.PORT || 3001;
 // Initialize database
 const db = initializeDatabase();
 console.log("✅ Database initialized with Amazon data");
+
+// MCP tools will be initialized async
+let mcpTools = null;
 
 const JOURNEY_LOCATIONS = [
   {
@@ -242,83 +272,13 @@ function advanceJourney(previousHash, choiceId) {
   return { state, prose };
 }
 
-// Create simple MCP-like tools interface for narrator
-const mcpTools = {
-  async call(toolName, params) {
-    try {
-      switch (toolName) {
-        case "amazon_db.get_random_location": {
-          const location = db
-            .prepare("SELECT * FROM locations ORDER BY RANDOM() LIMIT 1")
-            .get();
-          return {
-            content: [
-              { type: "text", text: JSON.stringify(location, null, 2) },
-            ],
-          };
-        }
-
-        case "amazon_db.get_random_animals": {
-          const { count = 3, category, dangerLevel } = params;
-          let query = "SELECT * FROM animals WHERE 1=1";
-          const queryParams = [];
-
-          if (category) {
-            query += " AND category = ?";
-            queryParams.push(category);
-          }
-
-          if (dangerLevel) {
-            query += " AND danger_level = ?";
-            queryParams.push(dangerLevel);
-          }
-
-          query += " ORDER BY RANDOM() LIMIT ?";
-          queryParams.push(count);
-
-          const animals = db.prepare(query).all(...queryParams);
-          return {
-            content: [{ type: "text", text: JSON.stringify(animals, null, 2) }],
-          };
-        }
-
-        case "amazon_db.get_random_plants": {
-          const { count = 2, medicinal } = params;
-          let query = "SELECT * FROM plants";
-          const queryParams = [];
-
-          if (medicinal !== undefined) {
-            query += " WHERE medicinal_use IS NOT NULL";
-          }
-
-          query += " ORDER BY RANDOM() LIMIT ?";
-          queryParams.push(count);
-
-          const plants = db.prepare(query).all(...queryParams);
-          return {
-            content: [{ type: "text", text: JSON.stringify(plants, null, 2) }],
-          };
-        }
-
-        default:
-          throw new Error(`Unknown tool: ${toolName}`);
-      }
-    } catch (error) {
-      console.error(`MCP tool error (${toolName}):`, error);
-      return {
-        content: [{ type: "text", text: `Error: ${error.message}` }],
-        isError: true,
-      };
-    }
-  },
-};
-
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Initialize narrator
+// Initialize narrators (will be updated with MCP tools after server starts)
 const narrator = new Narrator();
+let dialogueNarrator = new DialogueNarrator();
 
 app.get("/start", (req, res) => {
   try {
@@ -360,6 +320,444 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Helper to transform state to match frontend expectations
+function transformStateForFrontend(state) {
+  const location = state.route[state.progress] || state.route[0];
+  return {
+    ...state,
+    location: location.name,
+    biome: location.biome,
+    status: state.status === "ongoing" ? "active" : state.status,
+  };
+}
+
+// DIALOGUE-BASED API ENDPOINTS
+
+// Start a new game with dialogue scene
+app.post(
+  "/api/dialogue/start",
+  asyncHandler(async (req, res) => {
+    // Validate input
+    const validatedPlayerName = validatePlayerName(req.body.playerName);
+
+    // Create initial game state
+    const state = createInitialState(validatedPlayerName);
+    const transformedState = transformStateForFrontend(state);
+
+    // Get a character for the opening scene
+    const rawCharacter = getCharacterForScene({
+      location: transformedState.location,
+      rolePreference: "guide", // Start with a guide for the intro
+    });
+
+    const character = parseCharacterData(rawCharacter);
+
+    // Generate opening dialogue with player ID for MCP tracking
+    const dialogueData = await dialogueNarrator.generateIntroDialogue({
+      character,
+      state: transformedState,
+      location: transformedState.location,
+      playerId: validatedPlayerName,
+    });
+
+    // Return complete dialogue scene
+    res.json({
+      state: transformedState,
+      dialogue: {
+        ...dialogueData.dialogue,
+        character: {
+          id: character.id,
+          name: character.name,
+          role: character.role,
+          archetype: character.archetype,
+          description: character.description,
+          backgroundImage: character.background_image,
+        },
+        options: dialogueData.options,
+        location: transformedState.location,
+        timeOfDay: "daytime", // TODO: Will be dynamic when day/night cycle is implemented
+      },
+    });
+  })
+);
+
+// Continue a dialogue conversation
+app.post(
+  "/api/dialogue/continue",
+  asyncHandler(async (req, res) => {
+    // Validate input
+    const validatedState = validateGameState(req.body.state);
+    const validatedCharacterId = validateCharacterId(req.body.characterId);
+
+    if (!req.body.selectedOptionId) {
+      throw new ValidationError(
+        "Selected option ID is required",
+        "selectedOptionId"
+      );
+    }
+
+    const { selectedOptionId, previousDialogue } = req.body;
+
+    // Get the character
+    const rawCharacter = getCharacterById(validatedCharacterId);
+    if (!rawCharacter) {
+      return res.status(404).json({ error: "Character not found" });
+    }
+
+    const character = parseCharacterData(rawCharacter);
+
+    // Find the selected option (would be passed from frontend)
+    const selectedOption = {
+      id: selectedOptionId,
+      text: req.body.selectedOptionText || "Continue...",
+      tone: req.body.selectedOptionTone || "neutral",
+    };
+
+    // Generate follow-up dialogue with MCP tracking
+    const dialogueData = await dialogueNarrator.generateFollowUpDialogue({
+      character,
+      state: validatedState,
+      selectedOption,
+      previousDialogue: previousDialogue || "",
+      playerId: validatedState.playerName,
+      turnNumber: req.body.turnNumber || 2,
+    });
+
+    res.json({
+      dialogue: {
+        ...dialogueData.dialogue,
+        character: {
+          id: character.id,
+          name: character.name,
+          role: character.role,
+          archetype: character.archetype,
+          description: character.description,
+          backgroundImage: character.background_image,
+        },
+        options: dialogueData.options,
+        conversationEnds: dialogueData.conversationEnds || false,
+      },
+    });
+  })
+);
+
+// Get a new character for a scene
+app.post(
+  "/api/dialogue/new-character",
+  asyncHandler(async (req, res) => {
+    // Validate input
+    const validatedState = validateGameState(req.body.state);
+    const { rolePreference, excludeIds } = req.body;
+
+    const rawCharacter = getCharacterForScene({
+      location: validatedState.location,
+      rolePreference,
+      excludeIds: excludeIds || [],
+    });
+
+    const character = parseCharacterData(rawCharacter);
+
+    // Generate intro dialogue with this character and MCP tracking
+    const dialogueData = await dialogueNarrator.generateIntroDialogue({
+      character,
+      state: validatedState,
+      location: validatedState.location,
+      playerId: validatedState.playerName,
+    });
+
+    res.json({
+      dialogue: {
+        ...dialogueData.dialogue,
+        character: {
+          id: character.id,
+          name: character.name,
+          role: character.role,
+          archetype: character.archetype,
+          description: character.description,
+          backgroundImage: character.background_image,
+        },
+        options: dialogueData.options,
+        location: validatedState.location,
+        timeOfDay: "daytime", // TODO: Will be dynamic when day/night cycle is implemented
+      },
+    });
+  })
+);
+
+// TODO: getTimeOfDay function will be implemented when day/night cycle is added
+// function getTimeOfDay(daysElapsed) {
+//   const times = ["dawn", "morning", "midday", "afternoon", "dusk", "evening"];
+//   return times[daysElapsed % times.length];
+// }
+
+// HYBRID SYSTEM API ENDPOINTS
+
+import { getAvailableActions, resolveAction } from "./game/actionManager.js";
+import {
+  handleModeTransition,
+  getModeTransitionMessage,
+} from "./game/modeManager.js";
+
+// Get available actions for current state
+app.post(
+  "/api/actions/list",
+  asyncHandler(async (req, res) => {
+    const validatedState = validateGameState(req.body.state);
+
+    // Get MCP tools if available
+    const mcpTools = req.app.locals.mcpTools || null;
+
+    const actions = getAvailableActions(validatedState, mcpTools);
+
+    res.json({
+      actions: actions.categorized,
+      total: actions.count,
+      currentMode: validatedState.currentMode,
+      location: validatedState.route[validatedState.progress],
+    });
+  })
+);
+
+// Execute an action
+app.post(
+  "/api/actions/execute",
+  asyncHandler(async (req, res) => {
+    const validatedState = validateGameState(req.body.state);
+    const { actionId } = req.body;
+
+    if (!actionId) {
+      throw new ValidationError("Action ID is required", "actionId");
+    }
+
+    // Get MCP tools if available
+    const mcpTools = req.app.locals.mcpTools || null;
+
+    // Resolve the action
+    const result = resolveAction(validatedState, actionId, mcpTools);
+
+    // Handle mode transition
+    const transition = handleModeTransition(result.state, "action", result);
+    const transitionMessage = getModeTransitionMessage(
+      "action",
+      transition.mode,
+      transition.reason
+    );
+
+    // Transform state for frontend
+    const transformedState = transformStateForFrontend(transition.state);
+
+    res.json({
+      state: transformedState,
+      action: result.action,
+      message: result.message,
+      modeTransition: {
+        from: "action",
+        to: transition.mode,
+        reason: transition.reason,
+        message: transitionMessage,
+      },
+    });
+  })
+);
+
+// Transition from dialogue to another mode
+app.post(
+  "/api/modes/transition-from-dialogue",
+  asyncHandler(async (req, res) => {
+    const validatedState = validateGameState(req.body.state);
+    const { dialogueResult } = req.body;
+
+    const transition = handleModeTransition(
+      validatedState,
+      "dialogue",
+      dialogueResult || {}
+    );
+    const transitionMessage = getModeTransitionMessage(
+      "dialogue",
+      transition.mode,
+      transition.reason
+    );
+
+    const transformedState = transformStateForFrontend(transition.state);
+
+    // If transitioning to dialogue, get a new character
+    if (transition.mode === "dialogue") {
+      const excludeIds = req.body.excludeIds || [];
+      const rawCharacter = getCharacterForScene({
+        location: transformedState.location,
+        excludeIds,
+      });
+
+      const character = parseCharacterData(rawCharacter);
+
+      // Determine if this should be consequential
+      const dialogueType = dialogueNarrator.analyzeDialogueType(
+        character,
+        transformedState,
+        null
+      );
+
+      let dialogueData;
+      if (dialogueType.isConsequential) {
+        // Generate consequential dialogue
+        const consequenceTypes = ["reveal", "quest", "crisis", "opportunity"];
+        const randomType =
+          consequenceTypes[Math.floor(Math.random() * consequenceTypes.length)];
+
+        dialogueData = await dialogueNarrator.generateConsequentialDialogue({
+          character,
+          state: transformedState,
+          location: transformedState.location,
+          playerId: transformedState.playerName,
+          consequenceType: randomType,
+        });
+      } else {
+        // Generate regular conversational dialogue
+        dialogueData = await dialogueNarrator.generateIntroDialogue({
+          character,
+          state: transformedState,
+          location: transformedState.location,
+          playerId: transformedState.playerName,
+        });
+      }
+
+      return res.json({
+        state: transformedState,
+        modeTransition: {
+          from: "dialogue",
+          to: "dialogue",
+          reason: transition.reason,
+          message: transitionMessage,
+        },
+        dialogue: {
+          ...dialogueData.dialogue,
+          character: {
+            id: character.id,
+            name: character.name,
+            role: character.role,
+            archetype: character.archetype,
+            description: character.description,
+            backgroundImage: character.background_image,
+          },
+          options: dialogueData.options,
+          isConsequential: dialogueData.isConsequential || false,
+          consequenceType: dialogueData.consequenceType,
+          location: transformedState.location,
+        },
+      });
+    }
+
+    res.json({
+      state: transformedState,
+      modeTransition: {
+        from: "dialogue",
+        to: transition.mode,
+        reason: transition.reason,
+        message: transitionMessage,
+      },
+    });
+  })
+);
+
+// Start exploration mode
+app.post(
+  "/api/exploration/start",
+  asyncHandler(async (req, res) => {
+    const validatedState = validateGameState(req.body.state);
+
+    // Update mode
+    validatedState.currentMode = "exploration";
+    validatedState.modeContext.exploration = {
+      areaId: `area_${validatedState.progress}_${Date.now()}`,
+      itemsFound: [],
+      turnsRemaining: 3,
+    };
+
+    const location = validatedState.route[validatedState.progress];
+
+    res.json({
+      state: transformStateForFrontend(validatedState),
+      exploration: {
+        location,
+        description: `You begin to explore the ${location.biome} around ${location.name}.`,
+        turnsRemaining: 3,
+      },
+    });
+  })
+);
+
+// Explore (take a turn exploring)
+app.post(
+  "/api/exploration/explore",
+  asyncHandler(async (req, res) => {
+    const validatedState = validateGameState(req.body.state);
+    const { action } = req.body; // "search" | "observe" | "rest" | "leave"
+
+    const exploration = validatedState.modeContext.exploration;
+    exploration.turnsRemaining -= 1;
+
+    // Simulate findings (in a full implementation, this would be more sophisticated)
+    const findings = {
+      search: { items: ["medicinal herb"], supplies: +5, stamina: -3 },
+      observe: { knowledge: ["bird migration pattern"], morale: +3 },
+      rest: { stamina: +8, supplies: -2 },
+      leave: { turnsRemaining: 0 },
+    };
+
+    const result = findings[action] || findings.leave;
+
+    // Apply changes
+    if (result.supplies) validatedState.supplies += result.supplies;
+    if (result.stamina)
+      validatedState.stamina = Math.min(
+        100,
+        Math.max(0, validatedState.stamina + result.stamina)
+      );
+    if (result.morale)
+      validatedState.morale = Math.min(
+        100,
+        Math.max(0, validatedState.morale + result.morale)
+      );
+    if (result.items) {
+      validatedState.inventory.push(...result.items);
+      exploration.itemsFound.push(...result.items);
+    }
+    if (result.knowledge) validatedState.knowledge.push(...result.knowledge);
+
+    // Check if exploration is complete
+    let modeTransition = null;
+    if (exploration.turnsRemaining <= 0 || action === "leave") {
+      const transition = handleModeTransition(validatedState, "exploration", {
+        itemsFound: exploration.itemsFound,
+        knowledgeGained: result.knowledge || [],
+      });
+      modeTransition = {
+        from: "exploration",
+        to: transition.mode,
+        reason: transition.reason,
+        message: getModeTransitionMessage(
+          "exploration",
+          transition.mode,
+          transition.reason
+        ),
+      };
+      validatedState.currentMode = transition.mode;
+    }
+
+    res.json({
+      state: transformStateForFrontend(validatedState),
+      result: {
+        action,
+        findings: result,
+        turnsRemaining: exploration.turnsRemaining,
+      },
+      modeTransition,
+    });
+  })
+);
+
+// ORIGINAL API ENDPOINTS (for backward compatibility)
+
 // Start a new game
 app.post("/api/start", async (req, res) => {
   try {
@@ -369,14 +767,15 @@ app.post("/api/start", async (req, res) => {
     }
 
     const state = createInitialState(playerName);
-    res.json({ state });
+    const transformedState = transformStateForFrontend(state);
+    res.json({ state: transformedState });
   } catch (error) {
     console.error("Error starting game:", error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get available actions for current state
+// Get available actions for current state (legacy endpoint - for backward compatibility)
 app.post("/api/actions", async (req, res) => {
   try {
     const { state } = req.body;
@@ -384,8 +783,10 @@ app.post("/api/actions", async (req, res) => {
       return res.status(400).json({ error: "State is required" });
     }
 
-    const actions = getAvailableActions(state);
-    res.json({ actions });
+    const mcpTools = req.app.locals.mcpTools || null;
+    const result = getAvailableActions(state, mcpTools);
+    // Return in old format for backward compatibility
+    res.json({ actions: result.all });
   } catch (error) {
     console.error("Error getting actions:", error);
     res.status(500).json({ error: error.message });
@@ -401,24 +802,25 @@ app.post("/api/action", async (req, res) => {
     }
 
     const result = applyAction(state, actionId);
+    const transformedState = transformStateForFrontend(result.state);
 
     // Build context for narration
     const context = {
       stateSummary: {
-        location: result.state.location,
-        biome: result.state.biome,
-        morale: result.state.morale,
-        stamina: result.state.stamina,
-        supplies: result.state.supplies,
-        daysElapsed: result.state.daysElapsed,
-        status: result.state.status,
+        location: transformedState.location,
+        biome: transformedState.biome,
+        morale: transformedState.morale,
+        stamina: transformedState.stamina,
+        supplies: transformedState.supplies,
+        // daysElapsed: transformedState.daysElapsed, // TODO: Will be tracked when camping is implemented
+        status: transformedState.status,
       },
       encounter: result.encounter,
       action: result.action,
     };
 
     res.json({
-      state: result.state,
+      state: transformedState,
       context,
     });
   } catch (error) {
@@ -533,7 +935,7 @@ app.post("/api/apply-choice", async (req, res) => {
         nextState.progress + (deltas.progress || 0)
       )
     );
-    nextState.daysElapsed += 1;
+    // nextState.daysElapsed += 1; // TODO: Will be tracked when camping is implemented
     nextState.lastAction = {
       label: choice.label,
       description: choice.description,
@@ -596,10 +998,11 @@ app.post("/api/apply-choice", async (req, res) => {
     ) {
       nextState.status = "failed";
     } else if (
-      nextState.progress >= nextState.route.length - 1 &&
-      nextState.daysElapsed >= 10
+      nextState.progress >=
+      nextState.route.length - 1
+      // TODO: Add time requirement when camping is implemented (e.g., && nextState.daysElapsed >= 10)
     ) {
-      // Must reach final location AND have journeyed for at least 10 days
+      // Must reach final location
       nextState.status = "complete";
     } else {
       nextState.status = "ongoing";
@@ -638,8 +1041,44 @@ if (fs.existsSync(distPath)) {
   });
 }
 
-// Start server
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🌊 Amazon Trail server running on http://localhost:${PORT}`);
-  console.log(`📡 API available at http://localhost:${PORT}/api`);
+// Add validation error handler middleware (must be after routes)
+app.use(validationErrorHandler);
+
+// General error handler
+app.use((err, req, res, next) => {
+  console.error("[Server Error]", {
+    message: err.message,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+  });
+
+  res.status(err.statusCode || 500).json({
+    error: err.message || "Internal server error",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
 });
+
+// Start server with async initialization
+async function startServer() {
+  // Initialize MCP tools
+  mcpTools = await registerAllTools(db);
+  console.log(
+    "✅ MCP tools registered:",
+    mcpTools.listTools().length,
+    "tools available"
+  );
+
+  // Make MCP tools available to all endpoints
+  app.locals.mcpTools = mcpTools;
+
+  // Reinitialize dialogue narrator with MCP tools
+  dialogueNarrator = new DialogueNarrator({ mcpTools });
+  console.log("✅ DialogueNarrator initialized with MCP tools");
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`🌊 Igapó server running on http://localhost:${PORT}`);
+    console.log(`📡 API available at http://localhost:${PORT}/api`);
+    console.log(`🎮 Hybrid Interaction System enabled`);
+  });
+}
+
+startServer().catch(console.error);

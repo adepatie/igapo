@@ -10,6 +10,9 @@
     "test": "vitest run -c vite.config.ts",
     "test:watch": "vitest watch -c vite.config.ts",
     "test:e2e": "playwright test -c playwright.config.ts",
+    "test:e2e:debug": "playwright test -c playwright.config.ts --debug",
+    "test:e2e:ui": "playwright test -c playwright.config.ts --ui",
+    "test:e2e:headed": "playwright test -c playwright.config.ts --headed",
     "clean": "rimraf dist"
   },
   "dependencies": {

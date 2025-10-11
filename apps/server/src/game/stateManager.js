@@ -115,7 +115,7 @@ export const createInitialState = (playerName = "Explorer") => ({
   morale: 75,
   stamina: 80,
   supplies: 120,
-  daysElapsed: 0,
+  // daysElapsed: 0, // TODO: Will be tracked when camping feature is implemented
   progress: 0,
   route: ROUTE,
   journal: [],
@@ -129,6 +129,34 @@ export const createInitialState = (playerName = "Explorer") => ({
     reason: "Save dying grandmother",
     cluesFound: 0,
     indigenousKnowledge: [],
+  },
+  // Hybrid Interaction System
+  currentMode: "dialogue", // dialogue | action | exploration | encounter | reflection
+  modeContext: {
+    dialogue: {
+      characterId: null,
+      turnNumber: 0,
+      canExit: true, // Can player leave this conversation?
+      isConsequential: false, // Is this dialogue leading to game changes?
+    },
+    action: {
+      availableCategories: ["movement", "social", "survival", "special"],
+      lastCategory: null,
+    },
+    exploration: {
+      areaId: null,
+      itemsFound: [],
+      turnsRemaining: 3,
+    },
+    encounter: {
+      type: null, // danger | opportunity | mystery
+      turnsRemaining: 0,
+      resolved: false,
+    },
+    reflection: {
+      type: null, // dream | journal | memory
+      triggered: false,
+    },
   },
 });
 
@@ -165,7 +193,7 @@ export const applyAction = (state, actionId) => {
   }
 
   let nextState = applyActionDeltas(state, action.deltas ?? {});
-  nextState.daysElapsed += 1;
+  // nextState.daysElapsed += 1; // TODO: Will be tracked when camping feature is implemented
   nextState.lastAction = action;
 
   const encounter = randomEncounter(nextState);

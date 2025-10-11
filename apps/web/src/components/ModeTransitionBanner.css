@@ -1,0 +1,153 @@
+.mode-transition-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+  padding: 2rem;
+}
+
+.transition-content {
+  background: white;
+  padding: 3rem 2rem;
+  border-radius: 16px;
+  max-width: 500px;
+  text-align: center;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  margin-bottom: 2rem;
+}
+
+.transition-icon-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  font-size: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.from-icon,
+.to-icon {
+  animation: pulse 1s ease infinite;
+}
+
+.arrow {
+  opacity: 0.6;
+  animation: slideRight 1s ease infinite;
+}
+
+.transition-info {
+  margin-top: 1rem;
+}
+
+.transition-title {
+  font-size: 1.8rem;
+  margin-bottom: 1rem;
+  color: var(--color-text-primary, #2c3e50);
+}
+
+.transition-message {
+  font-size: 1.2rem;
+  color: var(--color-text-secondary, #6c757d);
+  line-height: 1.6;
+}
+
+.acknowledge-button {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  background: var(--color-primary, #4a90e2);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.acknowledge-button:hover {
+  background: var(--color-primary-dark, #357abd);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4);
+}
+
+/* Mode-specific colors */
+.mode-dialogue .transition-content {
+  border-left: 6px solid #4a90e2;
+}
+
+.mode-action .transition-content {
+  border-left: 6px solid #28a745;
+}
+
+.mode-exploration .transition-content {
+  border-left: 6px solid #ffc107;
+}
+
+.mode-encounter .transition-content {
+  border-left: 6px solid #dc3545;
+}
+
+.mode-reflection .transition-content {
+  border-left: 6px solid #6f42c1;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes slideRight {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .mode-transition-banner {
+    padding: 1rem;
+  }
+
+  .transition-content {
+    padding: 2rem 1.5rem;
+  }
+
+  .transition-icon-flow {
+    font-size: 2.5rem;
+  }
+
+  .transition-title {
+    font-size: 1.4rem;
+  }
+
+  .transition-message {
+    font-size: 1rem;
+  }
+}

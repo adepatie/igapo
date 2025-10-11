@@ -1,11 +1,4 @@
-import type {
-  StartResponse,
-  ActionResponse,
-  NarrateResponse,
-  GameState,
-  TurnContext,
-  Action,
-} from "./types";
+import type { GameState } from "./types";
 
 const RAW_BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 const WINDOW_ORIGIN =
@@ -37,50 +30,120 @@ async function handleResponse<T>(response: Response): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function startGame(playerName: string): Promise<StartResponse> {
-  const response = await fetch(createApiUrl("/api/start"), {
+// DIALOGUE API FUNCTIONS
+
+export async function startDialogueGame(
+  playerName: string
+): Promise<import("./types").StartDialogueResponse> {
+  const response = await fetch(createApiUrl("/api/dialogue/start"), {
     method: "POST",
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({ playerName }),
   });
 
-  return handleResponse<StartResponse>(response);
+  return handleResponse<import("./types").StartDialogueResponse>(response);
 }
 
-export async function performAction(
-  state: GameState,
-  actionId: string
-): Promise<ActionResponse> {
-  const response = await fetch(createApiUrl("/api/action"), {
+export async function continueDialogue(params: {
+  state: GameState;
+  characterId: string;
+  selectedOptionId: string;
+  selectedOptionText: string;
+  selectedOptionTone: string;
+  previousDialogue: string;
+}): Promise<{ dialogue: import("./types").DialogueResponse }> {
+  const response = await fetch(createApiUrl("/api/dialogue/continue"), {
     method: "POST",
     headers: DEFAULT_HEADERS,
-    body: JSON.stringify({ state, actionId }),
+    body: JSON.stringify(params),
   });
 
-  return handleResponse<ActionResponse>(response);
+  return handleResponse<{ dialogue: import("./types").DialogueResponse }>(
+    response
+  );
 }
 
-export async function getNarration(
-  type: "intro" | "turn",
-  params: { state?: GameState; context?: TurnContext }
-): Promise<NarrateResponse> {
-  const response = await fetch(createApiUrl("/api/narrate"), {
+export async function getNewCharacter(params: {
+  state: GameState;
+  rolePreference?: string;
+  excludeIds?: string[];
+}): Promise<{ dialogue: import("./types").DialogueResponse }> {
+  const response = await fetch(createApiUrl("/api/dialogue/new-character"), {
     method: "POST",
     headers: DEFAULT_HEADERS,
-    body: JSON.stringify({ type, ...params }),
+    body: JSON.stringify(params),
   });
 
-  return handleResponse<NarrateResponse>(response);
+  return handleResponse<{ dialogue: import("./types").DialogueResponse }>(
+    response
+  );
 }
 
-export async function getAvailableActions(
-  state: GameState
-): Promise<{ actions: Action[] }> {
-  const response = await fetch(createApiUrl("/api/actions"), {
+// HYBRID SYSTEM API FUNCTIONS
+
+export async function listActions(
+  state: import("./types").HybridGameState
+): Promise<import("./types").ActionListResponse> {
+  const response = await fetch(createApiUrl("/api/actions/list"), {
     method: "POST",
     headers: DEFAULT_HEADERS,
     body: JSON.stringify({ state }),
   });
 
-  return handleResponse<{ actions: Action[] }>(response);
+  return handleResponse<import("./types").ActionListResponse>(response);
+}
+
+export async function executeAction(
+  state: import("./types").HybridGameState,
+  actionId: string
+): Promise<import("./types").ActionExecuteResponse> {
+  const response = await fetch(createApiUrl("/api/actions/execute"), {
+    method: "POST",
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify({ state, actionId }),
+  });
+
+  return handleResponse<import("./types").ActionExecuteResponse>(response);
+}
+
+export async function transitionFromDialogue(
+  state: import("./types").HybridGameState,
+  dialogueResult: Record<string, any>,
+  excludeIds?: string[]
+): Promise<import("./types").ModeTransitionResponse> {
+  const response = await fetch(
+    createApiUrl("/api/modes/transition-from-dialogue"),
+    {
+      method: "POST",
+      headers: DEFAULT_HEADERS,
+      body: JSON.stringify({ state, dialogueResult, excludeIds }),
+    }
+  );
+
+  return handleResponse<import("./types").ModeTransitionResponse>(response);
+}
+
+export async function startExploration(
+  state: import("./types").HybridGameState
+): Promise<import("./types").ExplorationStartResponse> {
+  const response = await fetch(createApiUrl("/api/exploration/start"), {
+    method: "POST",
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify({ state }),
+  });
+
+  return handleResponse<import("./types").ExplorationStartResponse>(response);
+}
+
+export async function exploreArea(
+  state: import("./types").HybridGameState,
+  action: "search" | "observe" | "rest" | "leave"
+): Promise<import("./types").ExplorationExploreResponse> {
+  const response = await fetch(createApiUrl("/api/exploration/explore"), {
+    method: "POST",
+    headers: DEFAULT_HEADERS,
+    body: JSON.stringify({ state, action }),
+  });
+
+  return handleResponse<import("./types").ExplorationExploreResponse>(response);
 }

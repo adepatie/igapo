@@ -1,0 +1,99 @@
+{
+  "intro": {
+    "guide": {
+      "text": "Olá! I'm {name}. Welcome to the Amazon. These rivers are my home, and I know them well. Where are you headed, traveler?",
+      "action": "extends a weathered hand in greeting",
+      "mood": "friendly"
+    },
+    "trader": {
+      "text": "Ah, a customer! I'm {name}, and I have what you need. Supplies? Information? Both come at a price in these parts.",
+      "action": "gestures to an array of goods on the riverbank",
+      "mood": "neutral"
+    },
+    "shaman": {
+      "text": "The spirits told me you would come, {playerName}. I am {name}. You seek something precious, yes? The forest keeps many secrets.",
+      "action": "studies you with ancient eyes",
+      "mood": "thoughtful"
+    },
+    "hunter": {
+      "text": "You're far from civilization, friend. I'm {name}. If you're looking for game or safe passage, I might be able to help.",
+      "action": "rests hand on machete",
+      "mood": "cautious"
+    },
+    "herbalist": {
+      "text": "Ah, another soul seeking the forest's gifts. I'm {name}. Perhaps I have what you're looking for... if you know what to ask for.",
+      "action": "tends to medicinal plants",
+      "mood": "curious"
+    },
+    "elder": {
+      "text": "Come, sit. I am {name}, and I have seen many seasons pass. Your grandmother spoke of you often. What brings you to these waters?",
+      "action": "gestures to a seat by the fire",
+      "mood": "warm"
+    },
+    "default": {
+      "text": "Olá! I'm {name}. Welcome to this place. What brings you to the Amazon?",
+      "action": "looks at you with interest",
+      "mood": "neutral"
+    }
+  },
+  "followUp": {
+    "default": {
+      "text": "{name} considers your words carefully before responding. 'I see. Well, the path ahead isn't easy, but I wish you luck.'",
+      "action": "nods thoughtfully",
+      "mood": "neutral"
+    },
+    "helpful": {
+      "text": "{name} smiles warmly. 'I can help you with that. Let me share what I know.'",
+      "action": "leans in closer",
+      "mood": "friendly"
+    },
+    "suspicious": {
+      "text": "{name} narrows their eyes. 'Why should I trust you with that information?'",
+      "action": "crosses arms",
+      "mood": "suspicious"
+    },
+    "farewell": {
+      "text": "{name} bids you farewell. 'Safe travels, friend. May the river guide you well.'",
+      "action": "raises a hand in parting",
+      "mood": "neutral"
+    }
+  },
+  "options": {
+    "polite": [
+      {
+        "id": "greet",
+        "text": "Thank you for your time. I appreciate your help.",
+        "tone": "respectful"
+      },
+      {
+        "id": "farewell",
+        "text": "I should be going now. Thank you.",
+        "tone": "polite"
+      }
+    ],
+    "direct": [
+      {
+        "id": "ask-info",
+        "text": "I need information about the area.",
+        "tone": "direct"
+      },
+      {
+        "id": "ask-help",
+        "text": "Can you help me?",
+        "tone": "direct"
+      }
+    ],
+    "friendly": [
+      {
+        "id": "chat",
+        "text": "Tell me more about yourself.",
+        "tone": "friendly"
+      },
+      {
+        "id": "share",
+        "text": "I'm searching for something important to me.",
+        "tone": "friendly"
+      }
+    ]
+  }
+}

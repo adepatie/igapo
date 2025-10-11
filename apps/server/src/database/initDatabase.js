@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
+import { initializeMCP } from "./mcpSchema.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,6 +55,19 @@ export function initializeDatabase() {
       habitat TEXT,
       description TEXT,
       indigenous_use TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS characters (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      archetype TEXT NOT NULL,
+      description TEXT,
+      backstory_template TEXT,
+      typical_knowledge TEXT,
+      spawn_locations TEXT,
+      available_moods TEXT,
+      background_image TEXT
     );
   `);
 
@@ -1064,9 +1078,172 @@ export function initializeDatabase() {
   });
   insertManyPlants(plants);
 
+  // Insert characters
+  const insertCharacter = db.prepare(`
+    INSERT INTO characters (id, name, role, archetype, description, backstory_template, typical_knowledge, spawn_locations, available_moods, background_image)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+
+  const characters = [
+    [
+      "guide_tomas",
+      "Tomás",
+      "guide",
+      "wise",
+      "An experienced river guide with decades of knowledge",
+      "A weathered guide who knows every bend of the Amazon. Has survived storms, encounters, and helped many travelers.",
+      "river_navigation,weather_patterns,safe_passages,indigenous_contacts",
+      "Manaus,Iquitos,Leticia",
+      "neutral,thoughtful,worried,happy",
+      "/default-character-bg.png",
+    ],
+    [
+      "trader_joaquim",
+      "Joaquim",
+      "trader",
+      "cunning",
+      "A shrewd trader always looking for the next deal",
+      "River trader who deals in everything from supplies to information. Knows the value of goods and secrets alike.",
+      "trade_routes,rare_items,market_prices,rumors",
+      "Manaus,Porto Velho,Santarém",
+      "neutral,suspicious,happy,thoughtful",
+      "/default-character-bg.png",
+    ],
+    [
+      "elder_maria",
+      "Maria",
+      "elder",
+      "wise",
+      "A respected indigenous elder with deep knowledge",
+      "Elder of her community, keeper of traditional knowledge about plants, animals, and the old ways.",
+      "medicinal_plants,indigenous_wisdom,legends,spiritual_guidance",
+      "remote_village,jungle_clearings",
+      "neutral,thoughtful,worried,sad",
+      "/default-character-bg.png",
+    ],
+    [
+      "scientist_dr_silva",
+      "Dr. Silva",
+      "scientist",
+      "intellectual",
+      "A botanist studying rare Amazonian flora",
+      "Passionate researcher documenting plant species. Academic but practical, driven by discovery.",
+      "botany,rare_species,scientific_methods,expedition_planning",
+      "Manaus,research_stations",
+      "neutral,excited,thoughtful,worried",
+      "/default-character-bg.png",
+    ],
+    [
+      "pilot_carlos",
+      "Carlos",
+      "pilot",
+      "adventurous",
+      "A daring riverboat captain with stories to tell",
+      "Captain who has navigated the Amazon for years. Brave, sometimes reckless, but reliable in a crisis.",
+      "river_hazards,boat_mechanics,shortcuts,survival_stories",
+      "Manaus,Iquitos,Porto Velho",
+      "neutral,excited,happy,worried",
+      "/default-character-bg.png",
+    ],
+    [
+      "healer_aya",
+      "Aya",
+      "healer",
+      "mystical",
+      "A traditional healer who communes with the forest",
+      "Healer who learned from her grandmother. Knows the language of plants and the spirits of the jungle.",
+      "healing_arts,spiritual_practices,jungle_dangers,herbal_remedies",
+      "remote_village,jungle_clearings,sacred_sites",
+      "neutral,thoughtful,worried,suspicious",
+      "/default-character-bg.png",
+    ],
+    [
+      "merchant_santos",
+      "Santos",
+      "merchant",
+      "friendly",
+      "A cheerful merchant with connections everywhere",
+      "Well-connected trader who knows everyone. Friendly demeanor hides sharp business sense.",
+      "supply_networks,local_contacts,goods_availability,trade_deals",
+      "Manaus,Santarém,Porto Velho,Belém",
+      "neutral,happy,excited,thoughtful",
+      "/default-character-bg.png",
+    ],
+    [
+      "ranger_felipe",
+      "Felipe",
+      "ranger",
+      "protective",
+      "A forest ranger dedicated to conservation",
+      "Protector of the rainforest who patrols against illegal activities. Serious but fair.",
+      "wildlife_tracking,conservation,illegal_activities,safe_zones",
+      "protected_areas,ranger_stations",
+      "neutral,worried,angry,thoughtful",
+      "/default-character-bg.png",
+    ],
+    [
+      "storyteller_pedro",
+      "Pedro",
+      "storyteller",
+      "charismatic",
+      "A captivating storyteller who knows all the legends",
+      "Traveling storyteller who collects tales from every river community. Entertainment and information combined.",
+      "local_legends,historical_events,cultural_traditions,folk_wisdom",
+      "Manaus,Iquitos,Santarém,villages",
+      "neutral,happy,excited,thoughtful",
+      "/default-character-bg.png",
+    ],
+    [
+      "fisherman_roberto",
+      "Roberto",
+      "fisherman",
+      "humble",
+      "A simple fisherman with intimate knowledge of the waters",
+      "Lifetime fisherman who reads the river like a book. Quiet but observant.",
+      "fishing_spots,water_conditions,fish_behavior,river_changes",
+      "all_riverside_locations",
+      "neutral,thoughtful,worried,happy",
+      "/default-character-bg.png",
+    ],
+    [
+      "rebel_ana",
+      "Ana",
+      "rebel",
+      "defiant",
+      "A young activist fighting for indigenous rights",
+      "Passionate defender of indigenous lands and traditions. Distrusts outsiders but respects those who prove worthy.",
+      "indigenous_rights,land_conflicts,community_needs,resistance_tactics",
+      "indigenous_territories,contested_areas",
+      "neutral,angry,suspicious,thoughtful",
+      "/default-character-bg.png",
+    ],
+    [
+      "prospector_miguel",
+      "Miguel",
+      "prospector",
+      "desperate",
+      "A worn-out prospector chasing rumors of riches",
+      "Former gold prospector now seeking rare plants and artifacts. Down on his luck but refuses to give up.",
+      "mining_sites,hidden_locations,rumors,dangerous_areas",
+      "remote_camps,abandoned_sites",
+      "neutral,excited,worried,suspicious",
+      "/default-character-bg.png",
+    ],
+  ];
+
+  const insertManyCharacters = db.transaction((characters) => {
+    for (const character of characters) {
+      insertCharacter.run(...character);
+    }
+  });
+  insertManyCharacters(characters);
+
   console.log(
-    `Database initialized with ${locations.length} locations, ${animals.length} animals, and ${plants.length} plants.`
+    `Database initialized with ${locations.length} locations, ${animals.length} animals, ${plants.length} plants, and ${characters.length} characters.`
   );
+
+  // Initialize MCP tables and seed data
+  initializeMCP(db);
 
   return db;
 }
