@@ -12,6 +12,23 @@ packages/*/dist/
 apps/*/node_modules/
 packages/*/node_modules/
 
+# Test outputs
+test-results/
+playwright-report/
+coverage/
+*.log
+
+# Database (auto-generated)
+data/amazon.db
+data/*.db
+data/*.db-*
+
+# IDE and OS
+.vscode/
+.idea/
+*.swp
+*.swo
+
 # Legacy/Archive
 archive/
 *.tar.gz

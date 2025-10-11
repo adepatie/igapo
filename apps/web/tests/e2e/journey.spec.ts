@@ -2,9 +2,11 @@ import { expect, test } from "@playwright/test";
 
 const PLAYER_NAME = "TestExplorer";
 
-test.describe("AI-powered journey", () => {
-  test("loads and progresses through multiple turns", async ({ page }) => {
-    console.log("[E2E] Starting test with player:", PLAYER_NAME);
+test.describe("Hybrid journey system", () => {
+  test("loads and progresses through dialogue and actions", async ({
+    page,
+  }) => {
+    console.log("[E2E] Starting hybrid system test with player:", PLAYER_NAME);
 
     const gameUrl = `/?player=${encodeURIComponent(PLAYER_NAME)}`;
 
@@ -21,226 +23,193 @@ test.describe("AI-powered journey", () => {
       }
     });
 
-    // Set up response waiters BEFORE navigation
-    console.log("[E2E] Setting up API response waiters...");
-    const startPromise = page.waitForResponse(
-      (res) => res.url().includes("/api/start") && res.ok(),
-      { timeout: 30000 }
-    );
-    const narratePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/narrate") && res.ok(),
-      { timeout: 40000 } // AI narration can take 20-30 seconds
-    );
-
-    // Navigate
+    // Navigate and wait for page load
     console.log("[E2E] Navigating to:", gameUrl);
     await page.goto(gameUrl, { waitUntil: "domcontentloaded" });
     console.log("[E2E] Page loaded");
 
-    // Wait for API calls with better error handling
-    console.log("[E2E] Waiting for /api/start...");
-    await startPromise.catch((err) => {
-      console.error("[E2E] Failed to get /api/start response:", err.message);
-      throw err;
-    });
-    console.log("[E2E] /api/start completed");
+    // Should show exposition scene initially
+    console.log("[E2E] Checking for exposition...");
+    const startButton = page.getByRole("button", { name: /begin/i });
+    await expect(startButton).toBeVisible({ timeout: 10000 });
 
-    console.log(
-      "[E2E] Waiting for /api/narrate (this may take 20-30 seconds for AI)..."
+    // Set up waiters for dialogue start BEFORE clicking
+    const dialogueStartPromise = page.waitForResponse(
+      (res) => res.url().includes("/api/dialogue/start") && res.ok(),
+      { timeout: 60000 } // Increased timeout for AI calls
     );
-    await narratePromise.catch((err) => {
-      console.error("[E2E] Failed to get /api/narrate response:", err.message);
-      throw err;
-    });
-    console.log("[E2E] /api/narrate completed");
 
-    // Wait for React to render the UI
+    console.log("[E2E] Clicking start button...");
+    await startButton.click();
+
+    // Wait for initial dialogue
+    console.log(
+      "[E2E] Waiting for /api/dialogue/start (AI call, may take up to 60s)..."
+    );
+    await dialogueStartPromise;
+    console.log("[E2E] /api/dialogue/start completed");
+
+    // Wait for dialogue modal to appear
     await page.waitForTimeout(2000);
 
-    // Debug: Check what's actually on the page
-    const bodyText = await page.textContent("body");
-    console.log("[E2E] Body content:", bodyText?.substring(0, 300));
-    const html = await page.content();
-    console.log("[E2E] Has h2 tags:", html.includes("<h2"));
-    console.log(
-      "[E2E] Has data-testid=prose:",
-      html.includes('data-testid="prose"')
+    // Check for dialogue modal
+    console.log("[E2E] Checking for dialogue modal...");
+    const dialogueModal = page.getByRole("dialog");
+    await expect(dialogueModal).toBeVisible({ timeout: 10000 });
+
+    // Character name should be visible
+    const characterName = page.locator(".character-name");
+    await expect(characterName).toBeVisible();
+    const nameText = await characterName.textContent();
+    console.log("[E2E] Character name:", nameText);
+
+    // Dialogue text should be visible
+    const dialogueText = page.locator(".dialogue-text");
+    await expect(dialogueText).toBeVisible();
+    const dialogueContent = (await dialogueText.textContent())?.trim();
+    expect(dialogueContent).toBeTruthy();
+    expect(dialogueContent!.length).toBeGreaterThan(20);
+    console.log("[E2E] Initial dialogue length:", dialogueContent!.length);
+
+    // Stats sidebar should be visible
+    console.log("[E2E] Checking stats sidebar...");
+    await expect(page.getByText(/Morale:/i)).toBeVisible();
+    await expect(page.getByText(/Stamina:/i)).toBeVisible();
+    await expect(page.getByText(/Supplies:/i)).toBeVisible();
+    await expect(page.getByText(/Progress:/i)).toBeVisible();
+
+    // Dialogue options should be available
+    console.log("[E2E] Checking dialogue options...");
+    const dialogueOptions = page.locator(".dialogue-option");
+    await expect(dialogueOptions.first()).toBeVisible({ timeout: 5000 });
+    const optionCount = await dialogueOptions.count();
+    console.log("[E2E] Found", optionCount, "dialogue options");
+    expect(optionCount).toBeGreaterThanOrEqual(2);
+
+    // Select a non-farewell option to continue dialogue
+    console.log("[E2E] Selecting first dialogue option...");
+    const dialogueContinuePromise = page.waitForResponse(
+      (res) => res.url().includes("/api/dialogue/continue") && res.ok(),
+      { timeout: 60000 }
     );
+
+    await dialogueOptions.first().click();
+
     console.log(
-      "[E2E] Has data-testid=choice:",
-      html.includes('data-testid="choice"')
+      "[E2E] Waiting for /api/dialogue/continue (AI call, may take up to 60s)..."
     );
+    await dialogueContinuePromise;
+    console.log("[E2E] /api/dialogue/continue completed");
 
-    // Banner should be visible with location and day
-    console.log("[E2E] Checking banner...");
-    const banner = page.getByRole("heading", { level: 2 });
-    await expect(banner).toBeVisible({ timeout: 10000 });
-    const bannerText = await banner.textContent();
-    console.log("[E2E] Banner text:", bannerText);
-    expect(bannerText).toMatch(/Day \d+/i);
+    await page.waitForTimeout(1500);
 
-    // Narrative prose should be visible
-    console.log("[E2E] Checking prose...");
-    const prose = page.getByTestId("prose");
-    await expect(prose).toBeVisible({ timeout: 5000 });
-    const initialProse = (await prose.textContent())?.trim();
-    expect(initialProse).toBeTruthy();
-    expect(initialProse!.length).toBeGreaterThan(50);
-    console.log("[E2E] Initial prose length:", initialProse!.length);
+    // Check if dialogue modal is still visible (might have ended conversation)
+    const dialogueStillOpen = await dialogueModal.isVisible();
+    console.log("[E2E] Dialogue still open after continue:", dialogueStillOpen);
 
-    // Stats should be visible (use first() to avoid strict mode violations with narrative text)
-    console.log("[E2E] Checking stats...");
-    await expect(page.getByText(/Morale:/i).first()).toBeVisible();
-    await expect(page.getByText(/Stamina:/i).first()).toBeVisible();
-    await expect(page.getByText(/Supplies:/i).first()).toBeVisible();
-
-    // Player name should be in footer (use first() to avoid strict mode violation)
-    await expect(page.getByText(new RegExp(PLAYER_NAME)).first()).toBeVisible();
-
-    // Choices should be available
-    console.log("[E2E] Checking choices...");
-    const choices = page.getByTestId("choice");
-    await expect(choices.first()).toBeVisible({ timeout: 5000 });
-    const choiceCount = await choices.count();
-    console.log("[E2E] Found", choiceCount, "choices");
-    expect(choiceCount).toBeGreaterThan(0);
-
-    // Each choice should have a label
-    for (let i = 0; i < choiceCount; i++) {
-      const choiceText = await choices.nth(i).textContent();
-      expect(choiceText?.trim().length).toBeGreaterThan(0);
+    if (dialogueStillOpen) {
+      // Dialogue should update if conversation continues
+      console.log("[E2E] Checking updated dialogue...");
+      const updatedDialogueContent = (await dialogueText.textContent())?.trim();
+      expect(updatedDialogueContent).toBeTruthy();
+      console.log(
+        "[E2E] Updated dialogue length:",
+        updatedDialogueContent!.length
+      );
+    } else {
+      console.log(
+        "[E2E] Dialogue ended after first option, skipping dialogue update check"
+      );
     }
 
-    // Perform first turn
-    console.log("[E2E] Clicking first choice...");
+    // If dialogue still open, look for farewell option
+    if (dialogueStillOpen) {
+      console.log("[E2E] Looking for farewell option...");
+      const farewellOption = dialogueOptions.filter({
+        hasText: /farewell|get going|continue|leave/i,
+      });
 
-    // Set up waiters BEFORE clicking to catch the responses
-    const actionResponsePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/action") && res.ok(),
-      { timeout: 30000 }
-    );
-    const narrateResponsePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/narrate") && res.ok(),
-      { timeout: 40000 }
-    );
-    const actionsResponsePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/actions") && res.ok(),
-      { timeout: 30000 }
-    );
+      if ((await farewellOption.count()) > 0) {
+        console.log("[E2E] Clicking farewell option...");
+        const transitionPromise = page.waitForResponse(
+          (res) =>
+            res.url().includes("/api/modes/transition-from-dialogue") &&
+            res.ok(),
+          { timeout: 30000 }
+        );
 
-    await choices.first().click();
+        await farewellOption.first().click();
+        await transitionPromise;
+        await page.waitForTimeout(1500);
 
-    console.log("[E2E] Waiting for /api/action...");
-    await actionResponsePromise;
-    console.log("[E2E] /api/action completed");
-
-    console.log(
-      "[E2E] Waiting for /api/narrate after turn 1 (AI call, may take 20-30s)..."
-    );
-    await narrateResponsePromise;
-    console.log("[E2E] /api/narrate after turn 1 completed");
-
-    console.log("[E2E] Waiting for /api/actions...");
-    await actionsResponsePromise;
-    console.log("[E2E] /api/actions completed");
-
-    await page.waitForTimeout(1000);
-
-    // Prose should update
-    console.log("[E2E] Checking prose after turn 1...");
-    await expect(prose).toBeVisible();
-    const proseAfterTurn1 = (await prose.textContent())?.trim();
-    expect(proseAfterTurn1).not.toBe(initialProse);
-    console.log("[E2E] Prose after turn 1 length:", proseAfterTurn1!.length);
-
-    // Banner should update (day should increment)
-    const bannerAfterTurn1 = await banner.textContent();
-    expect(bannerAfterTurn1).toMatch(/Day \d+/i);
-
-    // New choices should be available
-    await expect(choices.first()).toBeVisible();
-    await expect(choices.first()).toBeEnabled();
-
-    // Perform second turn
-    console.log("[E2E] Clicking second choice...");
-
-    // Set up waiters BEFORE clicking
-    const action2ResponsePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/action") && res.ok(),
-      { timeout: 30000 }
-    );
-    const narrate2ResponsePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/narrate") && res.ok(),
-      { timeout: 40000 }
-    );
-    const actions2ResponsePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/actions") && res.ok(),
-      { timeout: 30000 }
-    );
-
-    await choices.first().click();
-
-    console.log("[E2E] Waiting for /api/action...");
-    await action2ResponsePromise;
-    console.log("[E2E] /api/action completed");
-
-    console.log(
-      "[E2E] Waiting for /api/narrate after turn 2 (AI call, may take 20-30s)..."
-    );
-    await narrate2ResponsePromise;
-    console.log("[E2E] /api/narrate after turn 2 completed");
-
-    console.log("[E2E] Waiting for /api/actions...");
-    await actions2ResponsePromise;
-    console.log("[E2E] /api/actions completed");
-
-    await page.waitForTimeout(1000);
-
-    // Prose should update again
-    console.log("[E2E] Checking prose after turn 2...");
-    const proseAfterTurn2 = (await prose.textContent())?.trim();
-    expect(proseAfterTurn2).not.toBe(proseAfterTurn1);
-    console.log("[E2E] Prose after turn 2 length:", proseAfterTurn2!.length);
-
-    // Journal should have entries
-    const journalSection = page.locator(".journal");
-    if (await journalSection.isVisible()) {
-      const journalEntries = journalSection.locator(".journal__entry");
-      const entryCount = await journalEntries.count();
-      expect(entryCount).toBeGreaterThan(0);
+        // Dialogue modal should close
+        console.log("[E2E] Checking if dialogue modal closed...");
+        await expect(dialogueModal).not.toBeVisible({ timeout: 5000 });
+      } else {
+        console.log(
+          "[E2E] No farewell option found, dialogue may end automatically"
+        );
+      }
     }
 
-    console.log("[E2E] Test completed successfully!");
+    // Check if we're now in action mode
+    console.log("[E2E] Checking post-dialogue state...");
+
+    // Wait for modal to close if it hasn't already
+    await page.waitForTimeout(1000);
+
+    // Action menu bar should be visible (if in action mode)
+    const actionMenuBar = page.locator(".action-menu-bar");
+    if (await actionMenuBar.isVisible()) {
+      console.log("[E2E] Action menu bar is visible");
+
+      // Action categories should be present
+      const actionCategories = page.locator(".action-category");
+      const categoryCount = await actionCategories.count();
+      console.log("[E2E] Found", categoryCount, "action categories");
+      expect(categoryCount).toBeGreaterThan(0);
+    } else {
+      console.log(
+        "[E2E] Action menu bar not visible - may still be in dialogue or another mode"
+      );
+    }
+
+    // Location scene should always be visible
+    const locationScene = page.locator(".location-scene");
+    await expect(locationScene).toBeVisible();
+    console.log("[E2E] Location scene is visible");
+
+    console.log("[E2E] Hybrid system test completed successfully!");
   });
 
-  test("handles loading states", async ({ page }) => {
-    console.log("[E2E] Testing loading states...");
+  test("handles loading states during dialogue", async ({ page }) => {
+    console.log("[E2E] Testing loading states in hybrid system...");
 
     const gameUrl = `/?player=${encodeURIComponent(PLAYER_NAME)}`;
 
-    // Set up response waiters BEFORE navigation
-    const startPromise = page.waitForResponse(
-      (res) => res.url().includes("/api/start") && res.ok(),
-      { timeout: 30000 }
-    );
-    const narratePromise = page.waitForResponse(
-      (res) => res.url().includes("/api/narrate") && res.ok(),
-      { timeout: 40000 }
-    );
-
     await page.goto(gameUrl, { waitUntil: "domcontentloaded" });
 
-    console.log("[E2E] Waiting for API responses...");
-    await startPromise;
-    await narratePromise;
-    console.log("[E2E] API responses complete");
+    // Wait for exposition and click start
+    const startButton = page.getByRole("button", { name: /begin/i });
+    await expect(startButton).toBeVisible({ timeout: 10000 });
 
-    // Wait for React to render
-    await page.waitForTimeout(1000);
+    const dialogueStartPromise = page.waitForResponse(
+      (res) => res.url().includes("/api/dialogue/start") && res.ok(),
+      { timeout: 60000 }
+    );
 
-    const choices = page.getByTestId("choice");
-    await expect(choices.first()).toBeVisible();
-    await expect(choices.first()).toBeEnabled();
+    await startButton.click();
+    await dialogueStartPromise;
+    await page.waitForTimeout(2000);
+
+    // Dialogue modal should be visible
+    const dialogueModal = page.getByRole("dialog");
+    await expect(dialogueModal).toBeVisible({ timeout: 10000 });
+
+    // Dialogue options should be enabled (not in loading state)
+    const dialogueOptions = page.locator(".dialogue-option");
+    await expect(dialogueOptions.first()).toBeVisible();
+    await expect(dialogueOptions.first()).toBeEnabled();
 
     console.log("[E2E] Loading states test completed!");
   });
