@@ -1,14 +1,23 @@
 /**
  * Character context tool handlers
  * Provides rich character information for dialogue generation
+ * Now uses session DB for relationships and conversation history
  */
 
 /**
  * Get comprehensive character dialogue context
  * Includes character info, relationship status, location context, and relevant knowledge
+ * @param {Object} params - Query parameters
+ * @param {Database} db - Main database (for character templates)
+ * @param {Database} sessionDb - Session database (for relationships and conversations)
  */
-export async function getCharacterDialogueContext(params, db) {
+export async function getCharacterDialogueContext(params, db, sessionDb) {
   const { characterId, playerId, location, gameDay } = params;
+
+  // Validate session DB
+  if (!sessionDb) {
+    throw new Error("Session database not provided");
+  }
 
   // Get character details
   const character = db
@@ -28,8 +37,8 @@ export async function getCharacterDialogueContext(params, db) {
     ? character.spawn_locations.split(",").map((l) => l.trim())
     : [];
 
-  // Get or create relationship
-  let relationship = db
+  // Get or create relationship (from session DB)
+  let relationship = sessionDb
     .prepare(
       `
       SELECT * FROM character_relationships 
@@ -39,20 +48,25 @@ export async function getCharacterDialogueContext(params, db) {
     .get(playerId, characterId);
 
   if (!relationship) {
-    // First time meeting - create relationship
-    db.prepare(
-      `
+    // First time meeting - create relationship in session DB
+    const now = Date.now();
+    sessionDb
+      .prepare(
+        `
       INSERT INTO character_relationships 
-      (player_id, character_id, relationship_level, trust_level, first_met_location, first_met_day, last_interaction_day, total_interactions)
-      VALUES (?, ?, 0, 0, ?, ?, ?, 1)
+      (player_id, character_id, relationship_level, trust_level, first_met_location, first_met_day, last_interaction_day, total_interactions, created_at, updated_at)
+      VALUES (?, ?, 0, 0, ?, ?, ?, 1, ?, ?)
     `
-    ).run(
-      playerId,
-      characterId,
-      location || "unknown",
-      gameDay || 1,
-      gameDay || 1
-    );
+      )
+      .run(
+        playerId,
+        characterId,
+        location || "unknown",
+        gameDay || 1,
+        gameDay || 1,
+        now,
+        now
+      );
 
     relationship = {
       player_id: playerId,
@@ -67,15 +81,18 @@ export async function getCharacterDialogueContext(params, db) {
       last_interaction_day: gameDay,
     };
   } else {
-    // Update interaction count and day
-    db.prepare(
-      `
+    // Update interaction count and day in session DB
+    sessionDb
+      .prepare(
+        `
       UPDATE character_relationships 
       SET total_interactions = total_interactions + 1,
-          last_interaction_day = ?
+          last_interaction_day = ?,
+          updated_at = ?
       WHERE player_id = ? AND character_id = ?
     `
-    ).run(gameDay, playerId, characterId);
+      )
+      .run(gameDay, Date.now(), playerId, characterId);
   }
 
   // Parse relationship JSON fields
@@ -94,8 +111,8 @@ export async function getCharacterDialogueContext(params, db) {
       .get(`%${location}%`);
   }
 
-  // Get recent conversation history
-  const conversationHistory = db
+  // Get recent conversation history (from session DB)
+  const conversationHistory = sessionDb
     .prepare(
       `
       SELECT * FROM conversation_memory
@@ -242,8 +259,11 @@ export async function getCharacterDialogueContext(params, db) {
 
 /**
  * Update character relationship based on dialogue outcome
+ * @param {Object} params - Update parameters
+ * @param {Database} db - Main database (for knowledge)
+ * @param {Database} sessionDb - Session database (for relationships)
  */
-export async function updateCharacterRelationship(params, db) {
+export async function updateCharacterRelationship(params, db, sessionDb) {
   const {
     playerId,
     characterId,
@@ -253,10 +273,16 @@ export async function updateCharacterRelationship(params, db) {
     revealKnowledgeId = null,
   } = params;
 
-  // Update relationship values
+  // Validate session DB
+  if (!sessionDb) {
+    throw new Error("Session database not provided");
+  }
+
+  // Update relationship values in session DB
   if (relationshipDelta !== 0 || trustDelta !== 0) {
-    db.prepare(
-      `
+    sessionDb
+      .prepare(
+        `
       UPDATE character_relationships
       SET relationship_level = CASE 
           WHEN relationship_level + ? > 10 THEN 10
@@ -267,45 +293,51 @@ export async function updateCharacterRelationship(params, db) {
           WHEN trust_level + ? > 100 THEN 100
           WHEN trust_level + ? < 0 THEN 0
           ELSE trust_level + ?
-        END
+        END,
+        updated_at = ?
       WHERE player_id = ? AND character_id = ?
     `
-    ).run(
-      relationshipDelta,
-      relationshipDelta,
-      relationshipDelta,
-      trustDelta,
-      trustDelta,
-      trustDelta,
-      playerId,
-      characterId
-    );
+      )
+      .run(
+        relationshipDelta,
+        relationshipDelta,
+        relationshipDelta,
+        trustDelta,
+        trustDelta,
+        trustDelta,
+        Date.now(),
+        playerId,
+        characterId
+      );
   }
 
-  // Add reputation tag
+  // Add reputation tag in session DB
   if (addReputationTag) {
-    const current = db
+    const current = sessionDb
       .prepare(
         "SELECT reputation_tags FROM character_relationships WHERE player_id = ? AND character_id = ?"
       )
       .get(playerId, characterId);
 
-    const tags = current.reputation_tags
+    const tags = current?.reputation_tags
       ? JSON.parse(current.reputation_tags)
       : [];
     if (!tags.includes(addReputationTag)) {
       tags.push(addReputationTag);
-      db.prepare(
-        `
+      sessionDb
+        .prepare(
+          `
         UPDATE character_relationships
-        SET reputation_tags = ?
+        SET reputation_tags = ?,
+            updated_at = ?
         WHERE player_id = ? AND character_id = ?
       `
-      ).run(JSON.stringify(tags), playerId, characterId);
+        )
+        .run(JSON.stringify(tags), Date.now(), playerId, characterId);
     }
   }
 
-  // Mark knowledge as revealed
+  // Mark knowledge as revealed in main DB (persistent)
   if (revealKnowledgeId) {
     db.prepare(
       `
@@ -344,8 +376,11 @@ export async function updateCharacterRelationship(params, db) {
 
 /**
  * Record conversation turn in memory
+ * @param {Object} params - Conversation data
+ * @param {Database} db - Main database (not used, kept for compatibility)
+ * @param {Database} sessionDb - Session database (for conversation memory)
  */
-export async function recordConversationTurn(params, db) {
+export async function recordConversationTurn(params, db, sessionDb) {
   const {
     playerId,
     characterId,
@@ -364,10 +399,16 @@ export async function recordConversationTurn(params, db) {
     gameDay,
   } = params;
 
+  // Validate session DB
+  if (!sessionDb) {
+    throw new Error("Session database not provided");
+  }
+
   const id = `conv_${playerId}_${characterId}_${Date.now()}`;
 
-  db.prepare(
-    `
+  sessionDb
+    .prepare(
+      `
     INSERT INTO conversation_memory (
       id, player_id, character_id, session_id, turn_number,
       player_choice_id, player_choice_text, player_choice_tone,
@@ -376,25 +417,26 @@ export async function recordConversationTurn(params, db) {
       location, game_day, timestamp
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `
-  ).run(
-    id,
-    playerId,
-    characterId,
-    sessionId,
-    turnNumber,
-    playerChoiceId,
-    playerChoiceText,
-    playerChoiceTone,
-    characterResponse,
-    characterMood,
-    moodChangeReason,
-    JSON.stringify(topicsDiscussed),
-    JSON.stringify(knowledgeRevealed),
-    relationshipDelta,
-    location,
-    gameDay,
-    Date.now()
-  );
+    )
+    .run(
+      id,
+      playerId,
+      characterId,
+      sessionId,
+      turnNumber,
+      playerChoiceId,
+      playerChoiceText,
+      playerChoiceTone,
+      characterResponse,
+      characterMood,
+      moodChangeReason,
+      JSON.stringify(topicsDiscussed),
+      JSON.stringify(knowledgeRevealed),
+      relationshipDelta,
+      location,
+      gameDay,
+      Date.now()
+    );
 
   return { success: true, conversationId: id };
 }

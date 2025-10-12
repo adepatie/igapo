@@ -1,61 +1,14 @@
 /**
  * MCP Database Schema Extensions
- * Adds tables for character relationships, conversation memory, and dynamic world state
+ * Adds tables for character knowledge, rumors, and world events (persistent templates)
+ * Note: Character relationships and conversation memory moved to sessionSchema.js (per-session)
  */
 
 /**
  * Create MCP-related tables in the database
+ * Only creates persistent template tables - session data is handled separately
  */
 export function createMCPTables(db) {
-  // Character relationships table
-  db.prepare(
-    `
-    CREATE TABLE IF NOT EXISTS character_relationships (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      player_id TEXT NOT NULL,
-      character_id INTEGER NOT NULL,
-      relationship_level INTEGER DEFAULT 0 CHECK (relationship_level BETWEEN -10 AND 10),
-      trust_level INTEGER DEFAULT 0 CHECK (trust_level BETWEEN 0 AND 100),
-      total_interactions INTEGER DEFAULT 0,
-      shared_secrets TEXT,
-      reputation_tags TEXT,
-      first_met_location TEXT,
-      first_met_day INTEGER,
-      last_interaction_day INTEGER,
-      created_at INTEGER DEFAULT (strftime('%s', 'now')),
-      updated_at INTEGER DEFAULT (strftime('%s', 'now')),
-      FOREIGN KEY (character_id) REFERENCES characters(id),
-      UNIQUE(player_id, character_id)
-    )
-  `
-  ).run();
-
-  // Conversation memory table
-  db.prepare(
-    `
-    CREATE TABLE IF NOT EXISTS conversation_memory (
-      id TEXT PRIMARY KEY,
-      player_id TEXT NOT NULL,
-      character_id INTEGER NOT NULL,
-      session_id TEXT NOT NULL,
-      turn_number INTEGER NOT NULL,
-      player_choice_id TEXT,
-      player_choice_text TEXT,
-      player_choice_tone TEXT,
-      character_response TEXT,
-      character_mood TEXT,
-      mood_change_reason TEXT,
-      topics_discussed TEXT,
-      knowledge_revealed TEXT,
-      relationship_delta INTEGER DEFAULT 0,
-      location TEXT,
-      game_day INTEGER,
-      timestamp INTEGER NOT NULL,
-      FOREIGN KEY (character_id) REFERENCES characters(id)
-    )
-  `
-  ).run();
-
   // Character knowledge table
   db.prepare(
     `
@@ -129,7 +82,7 @@ export function createMCPTables(db) {
   `
   ).run();
 
-  console.log("✅ MCP tables created successfully");
+  console.log("✅ MCP persistent tables created successfully");
 }
 
 /**

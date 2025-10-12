@@ -6,7 +6,18 @@ export interface GameState {
   biome: string;
   morale: number;
   stamina: number;
-  supplies: number;
+  supplies: number | import("@igapo/shared").SupplyState;
+  survival?: {
+    lastFoodConsumption: number;
+    lastWaterConsumption: number;
+    starvationStage: number;
+    dehydrationStage: number;
+    survivalModifiers: Record<string, any>;
+    timeRemaining?: {
+      dehydration: number;
+      starvation: number;
+    };
+  };
   // daysElapsed: number; // TODO: Will be tracked when camping feature is implemented
   status: "active" | "success" | "failure";
   journal: Array<{
@@ -188,6 +199,7 @@ export interface ModeContext {
 }
 
 export interface HybridGameState extends GameState {
+  sessionId: string | null; // Session ID for character relationships and conversation history
   currentMode: GameMode;
   modeContext: ModeContext;
   progress: number;
@@ -219,6 +231,7 @@ export interface ModeTransition {
   to: GameMode;
   reason: string;
   message: string;
+  context?: Record<string, any>;
 }
 
 export interface ActionListResponse {

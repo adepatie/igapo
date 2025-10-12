@@ -31,8 +31,20 @@ export class DialogueNarrator {
 
   /**
    * Generate initial dialogue when meeting a character
+   * @param {Object} options - Dialogue generation options
+   * @param {Object} options.character - Character data
+   * @param {Object} options.state - Game state
+   * @param {string} options.location - Current location
+   * @param {string} options.playerId - Player identifier
+   * @param {Database} options.sessionDb - Session database for relationships
    */
-  async generateIntroDialogue({ character, state, location, playerId }) {
+  async generateIntroDialogue({
+    character,
+    state,
+    location,
+    playerId,
+    sessionDb,
+  }) {
     // Get enriched context from MCP if available
     let mcpContext = null;
     if (this.mcpTools) {
@@ -44,7 +56,8 @@ export class DialogueNarrator {
             playerId: playerId || state.playerName,
             location: location || state.location,
             gameDay: state.progress || 1,
-          }
+          },
+          sessionDb // Pass session DB to MCP tool
         );
 
         // Parse the MCP response
@@ -220,20 +233,24 @@ Return ONLY valid JSON in this exact format:
           const sessionId = `session_${playerId || state.playerName}_${
             character.id
           }_${Date.now()}`;
-          await this.mcpTools.call("character.record_conversation", {
-            playerId: playerId || state.playerName,
-            characterId: character.id,
-            sessionId: sessionId,
-            turnNumber: 1,
-            playerChoiceId: "intro",
-            playerChoiceText: "Started conversation",
-            playerChoiceTone: "neutral",
-            characterResponse: parsed.dialogue.text,
-            characterMood: parsed.dialogue.mood,
-            topicsDiscussed: ["introduction", "mission"],
-            location: location || state.location,
-            gameDay: state.progress || 1,
-          });
+          await this.mcpTools.call(
+            "character.record_conversation",
+            {
+              playerId: playerId || state.playerName,
+              characterId: character.id,
+              sessionId: sessionId,
+              turnNumber: 1,
+              playerChoiceId: "intro",
+              playerChoiceText: "Started conversation",
+              playerChoiceTone: "neutral",
+              characterResponse: parsed.dialogue.text,
+              characterMood: parsed.dialogue.mood,
+              topicsDiscussed: ["introduction", "mission"],
+              location: location || state.location,
+              gameDay: state.progress || 1,
+            },
+            sessionDb
+          );
           console.log(
             `[MCP] Recorded intro conversation for ${character.name}`
           );
@@ -274,6 +291,14 @@ Return ONLY valid JSON in this exact format:
 
   /**
    * Generate follow-up dialogue based on player's choice
+   * @param {Object} options - Dialogue generation options
+   * @param {Object} options.character - Character data
+   * @param {Object} options.state - Game state
+   * @param {Object} options.selectedOption - Player's selected option
+   * @param {string} options.previousDialogue - Previous dialogue text
+   * @param {string} options.playerId - Player identifier
+   * @param {number} options.turnNumber - Turn number in conversation
+   * @param {Database} options.sessionDb - Session database for relationships
    */
   async generateFollowUpDialogue({
     character,
@@ -282,6 +307,7 @@ Return ONLY valid JSON in this exact format:
     previousDialogue,
     playerId,
     turnNumber = 2,
+    sessionDb,
   }) {
     // Get current relationship context from MCP
     let mcpContext = null;
@@ -294,7 +320,8 @@ Return ONLY valid JSON in this exact format:
             playerId: playerId || state.playerName,
             location: state.location,
             gameDay: state.progress || 1,
-          }
+          },
+          sessionDb // Pass session DB to MCP tool
         );
 
         if (result.content && result.content[0]?.text) {
@@ -437,14 +464,18 @@ Return ONLY valid JSON in this format:
         try {
           // Update relationship based on interaction
           if (relationshipDelta !== 0 || trustDelta !== 0 || reputationTag) {
-            await this.mcpTools.call("character.update_relationship", {
-              playerId: playerId || state.playerName,
-              characterId: character.id,
-              relationshipDelta: relationshipDelta,
-              trustDelta: trustDelta,
-              addReputationTag: reputationTag,
-              gameDay: state.progress || 1,
-            });
+            await this.mcpTools.call(
+              "character.update_relationship",
+              {
+                playerId: playerId || state.playerName,
+                characterId: character.id,
+                relationshipDelta: relationshipDelta,
+                trustDelta: trustDelta,
+                addReputationTag: reputationTag,
+                gameDay: state.progress || 1,
+              },
+              sessionDb
+            );
             console.log(
               `[MCP] Updated relationship: ${
                 relationshipDelta >= 0 ? "+" : ""
@@ -458,22 +489,26 @@ Return ONLY valid JSON in this format:
           const sessionId = `session_${playerId || state.playerName}_${
             character.id
           }_${Date.now()}`;
-          await this.mcpTools.call("character.record_conversation", {
-            playerId: playerId || state.playerName,
-            characterId: character.id,
-            sessionId: sessionId,
-            turnNumber: turnNumber,
-            playerChoiceId: selectedOption.id,
-            playerChoiceText: selectedOption.text,
-            playerChoiceTone: selectedOption.tone,
-            characterResponse: parsed.dialogue.text,
-            characterMood: parsed.dialogue.mood,
-            moodChangeReason: `Reacted to ${selectedOption.tone} tone`,
-            topicsDiscussed: this.extractTopics(parsed.dialogue.text),
-            relationshipDelta: relationshipDelta,
-            location: state.location,
-            gameDay: state.progress || 1,
-          });
+          await this.mcpTools.call(
+            "character.record_conversation",
+            {
+              playerId: playerId || state.playerName,
+              characterId: character.id,
+              sessionId: sessionId,
+              turnNumber: turnNumber,
+              playerChoiceId: selectedOption.id,
+              playerChoiceText: selectedOption.text,
+              playerChoiceTone: selectedOption.tone,
+              characterResponse: parsed.dialogue.text,
+              characterMood: parsed.dialogue.mood,
+              moodChangeReason: `Reacted to ${selectedOption.tone} tone`,
+              topicsDiscussed: this.extractTopics(parsed.dialogue.text),
+              relationshipDelta: relationshipDelta,
+              location: state.location,
+              gameDay: state.progress || 1,
+            },
+            sessionDb
+          );
           console.log(
             `[MCP] Recorded turn ${turnNumber} for ${character.name}`
           );
@@ -604,6 +639,13 @@ Return ONLY valid JSON in this format:
   /**
    * Generate consequential dialogue that affects game state
    * These conversations can't be exited easily and lead to changes
+   * @param {Object} options - Dialogue generation options
+   * @param {Object} options.character - Character data
+   * @param {Object} options.state - Game state
+   * @param {string} options.location - Current location
+   * @param {string} options.playerId - Player identifier
+   * @param {string} options.consequenceType - Type of consequence (reveal, quest, crisis, opportunity)
+   * @param {Database} options.sessionDb - Session database for relationships
    */
   async generateConsequentialDialogue({
     character,
@@ -611,6 +653,7 @@ Return ONLY valid JSON in this format:
     location,
     playerId,
     consequenceType = "reveal", // reveal | quest | crisis | opportunity
+    sessionDb,
   }) {
     // Get MCP context for relationship info
     let mcpContext = null;
@@ -623,7 +666,8 @@ Return ONLY valid JSON in this format:
             playerId: playerId || state.playerName,
             location: location || state.location,
             gameDay: state.progress || 1,
-          }
+          },
+          sessionDb // Pass session DB to MCP tool
         );
 
         if (result.content && result.content[0]?.text) {

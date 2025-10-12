@@ -33,16 +33,20 @@ export function createMCPServer(db) {
 
   /**
    * Simple call interface for internal use (backwards compatible)
+   * @param {string} toolName - Name of tool to call
+   * @param {Object} params - Tool parameters
+   * @param {Database} sessionDb - Optional session database for session-specific tools
    */
   const mcpTools = {
-    async call(toolName, params = {}) {
+    async call(toolName, params = {}, sessionDb = null) {
       const tool = toolHandlers.get(toolName);
       if (!tool) {
         throw new Error(`Unknown tool: ${toolName}`);
       }
 
       try {
-        const result = await tool.handler(params, db);
+        // Pass sessionDb as third parameter for character context tools
+        const result = await tool.handler(params, db, sessionDb);
         return {
           content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
         };

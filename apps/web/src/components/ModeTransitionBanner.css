@@ -99,7 +99,46 @@
   border-left: 6px solid #6f42c1;
 }
 
+/* Arrival transition styling */
+.arrival-transition .transition-content {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  border: none;
+  border-top: 6px solid #17a2b8;
+}
+
+.arrival-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid rgba(23, 162, 184, 0.2);
+}
+
+.arrival-icon {
+  font-size: 2rem;
+  animation: boat-rock 2s ease-in-out infinite;
+}
+
+.arrival-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #17a2b8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
 /* Animations */
+@keyframes boat-rock {
+  0%,
+  100% {
+    transform: rotate(-5deg);
+  }
+  50% {
+    transform: rotate(5deg);
+  }
+}
 @keyframes fadeIn {
   from {
     opacity: 0;

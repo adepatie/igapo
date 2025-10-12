@@ -1,12 +1,16 @@
 /**
  * Basic Amazon database tool handlers
  * These tools provide access to locations, animals, and plants data
+ * Note: These tools use main DB only (no session data needed)
  */
 
 /**
  * Get a random location from the database
+ * @param {Object} params - Query parameters
+ * @param {Database} db - Main database
+ * @param {Database} sessionDb - Session database (not used, for signature consistency)
  */
-export async function getRandomLocation(params, db) {
+export async function getRandomLocation(params, db, sessionDb) {
   const location = db
     .prepare("SELECT * FROM locations ORDER BY RANDOM() LIMIT 1")
     .get();
@@ -17,7 +21,7 @@ export async function getRandomLocation(params, db) {
 /**
  * Get random animals with optional filtering
  */
-export async function getRandomAnimals(params, db) {
+export async function getRandomAnimals(params, db, sessionDb) {
   const { count = 3, category, dangerLevel } = params;
   let query = "SELECT * FROM animals WHERE 1=1";
   const queryParams = [];
@@ -42,7 +46,7 @@ export async function getRandomAnimals(params, db) {
 /**
  * Get random plants with optional medicinal filter
  */
-export async function getRandomPlants(params, db) {
+export async function getRandomPlants(params, db, sessionDb) {
   const { count = 2, medicinal } = params;
   let query = "SELECT * FROM plants";
   const queryParams = [];
@@ -61,7 +65,7 @@ export async function getRandomPlants(params, db) {
 /**
  * Get location by name or type
  */
-export async function getLocation(params, db) {
+export async function getLocation(params, db, sessionDb) {
   const { name, type, biome } = params;
   let query = "SELECT * FROM locations WHERE 1=1";
   const queryParams = [];
@@ -90,7 +94,7 @@ export async function getLocation(params, db) {
 /**
  * Search animals by name or category
  */
-export async function searchAnimals(params, db) {
+export async function searchAnimals(params, db, sessionDb) {
   const { name, category, limit = 5 } = params;
   let query = "SELECT * FROM animals WHERE 1=1";
   const queryParams = [];
@@ -115,7 +119,7 @@ export async function searchAnimals(params, db) {
 /**
  * Search plants by name or medicinal use
  */
-export async function searchPlants(params, db) {
+export async function searchPlants(params, db, sessionDb) {
   const { name, medicinalUse, limit = 5 } = params;
   let query = "SELECT * FROM plants WHERE 1=1";
   const queryParams = [];
@@ -140,7 +144,7 @@ export async function searchPlants(params, db) {
 /**
  * Get all locations in a specific biome
  */
-export async function getLocationsByBiome(params, db) {
+export async function getLocationsByBiome(params, db, sessionDb) {
   const { biome } = params;
 
   const locations = db
@@ -153,7 +157,7 @@ export async function getLocationsByBiome(params, db) {
 /**
  * Get dangerous animals for encounter generation
  */
-export async function getDangerousAnimals(params, db) {
+export async function getDangerousAnimals(params, db, sessionDb) {
   const { count = 5, minDangerLevel = 5 } = params;
 
   const animals = db

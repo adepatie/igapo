@@ -23,6 +23,13 @@ import {
   asyncHandler,
   ValidationError,
 } from "./utils/validation.js";
+import {
+  createSession,
+  getSessionDb,
+  clearSession,
+  clearPlayerSessions,
+  startSessionCleanup,
+} from "./game/sessionManager.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -340,8 +347,14 @@ app.post(
     // Validate input
     const validatedPlayerName = validatePlayerName(req.body.playerName);
 
-    // Create initial game state
-    const state = createInitialState(validatedPlayerName);
+    // Create a new session for this player
+    const session = createSession(validatedPlayerName);
+    console.log(
+      `[API] Created session ${session.sessionId} for ${validatedPlayerName}`
+    );
+
+    // Create initial game state with session ID
+    const state = createInitialState(validatedPlayerName, session.sessionId);
     const transformedState = transformStateForFrontend(state);
 
     // Get a character for the opening scene
@@ -352,12 +365,16 @@ app.post(
 
     const character = parseCharacterData(rawCharacter);
 
-    // Generate opening dialogue with player ID for MCP tracking
+    // Get session database for MCP tools
+    const sessionDb = getSessionDb(session.sessionId);
+
+    // Generate opening dialogue with player ID and session for MCP tracking
     const dialogueData = await dialogueNarrator.generateIntroDialogue({
       character,
       state: transformedState,
       location: transformedState.location,
       playerId: validatedPlayerName,
+      sessionDb, // Pass session DB for character relationships
     });
 
     // Return complete dialogue scene
@@ -396,7 +413,21 @@ app.post(
       );
     }
 
+    // Validate session ID
+    if (!validatedState.sessionId) {
+      throw new ValidationError("Session ID is required", "sessionId");
+    }
+
     const { selectedOptionId, previousDialogue } = req.body;
+
+    // Get session database
+    const sessionDb = getSessionDb(validatedState.sessionId);
+    if (!sessionDb) {
+      throw new ValidationError(
+        "Session not found. Please start a new game.",
+        "sessionId"
+      );
+    }
 
     // Get the character
     const rawCharacter = getCharacterById(validatedCharacterId);
@@ -413,7 +444,7 @@ app.post(
       tone: req.body.selectedOptionTone || "neutral",
     };
 
-    // Generate follow-up dialogue with MCP tracking
+    // Generate follow-up dialogue with MCP tracking and session DB
     const dialogueData = await dialogueNarrator.generateFollowUpDialogue({
       character,
       state: validatedState,
@@ -421,6 +452,7 @@ app.post(
       previousDialogue: previousDialogue || "",
       playerId: validatedState.playerName,
       turnNumber: req.body.turnNumber || 2,
+      sessionDb, // Pass session DB for character relationships
     });
 
     res.json({
@@ -447,7 +479,22 @@ app.post(
   asyncHandler(async (req, res) => {
     // Validate input
     const validatedState = validateGameState(req.body.state);
+
+    // Validate session ID
+    if (!validatedState.sessionId) {
+      throw new ValidationError("Session ID is required", "sessionId");
+    }
+
     const { rolePreference, excludeIds } = req.body;
+
+    // Get session database
+    const sessionDb = getSessionDb(validatedState.sessionId);
+    if (!sessionDb) {
+      throw new ValidationError(
+        "Session not found. Please start a new game.",
+        "sessionId"
+      );
+    }
 
     const rawCharacter = getCharacterForScene({
       location: validatedState.location,
@@ -457,12 +504,13 @@ app.post(
 
     const character = parseCharacterData(rawCharacter);
 
-    // Generate intro dialogue with this character and MCP tracking
+    // Generate intro dialogue with this character, MCP tracking, and session DB
     const dialogueData = await dialogueNarrator.generateIntroDialogue({
       character,
       state: validatedState,
       location: validatedState.location,
       playerId: validatedState.playerName,
+      sessionDb, // Pass session DB for character relationships
     });
 
     res.json({
@@ -489,6 +537,57 @@ app.post(
 //   const times = ["dawn", "morning", "midday", "afternoon", "dusk", "evening"];
 //   return times[daysElapsed % times.length];
 // }
+
+// SESSION MANAGEMENT API ENDPOINTS
+
+// Reset session (for game restart)
+app.post(
+  "/api/session/reset",
+  asyncHandler(async (req, res) => {
+    const { playerName, sessionId } = req.body;
+
+    if (!sessionId) {
+      throw new ValidationError("Session ID is required", "sessionId");
+    }
+
+    // Clear the old session
+    const cleared = clearSession(sessionId);
+
+    if (!cleared) {
+      console.warn(`[API] Could not clear session ${sessionId}`);
+    }
+
+    // Create a new session
+    const newSession = createSession(playerName || "Explorer");
+    console.log(
+      `[API] Reset session: old=${sessionId}, new=${newSession.sessionId}`
+    );
+
+    res.json({
+      sessionId: newSession.sessionId,
+      message: "Session reset successfully",
+    });
+  })
+);
+
+// Clear all sessions for a player (admin/debug)
+app.post(
+  "/api/session/clear-player",
+  asyncHandler(async (req, res) => {
+    const { playerName } = req.body;
+
+    if (!playerName) {
+      throw new ValidationError("Player name is required", "playerName");
+    }
+
+    const cleared = clearPlayerSessions(playerName);
+
+    res.json({
+      cleared,
+      message: `Cleared ${cleared} session(s) for ${playerName}`,
+    });
+  })
+);
 
 // HYBRID SYSTEM API ENDPOINTS
 
@@ -567,6 +666,12 @@ app.post(
     const validatedState = validateGameState(req.body.state);
     const { dialogueResult } = req.body;
 
+    // Get session database if transitioning to dialogue
+    let sessionDb = null;
+    if (validatedState.sessionId) {
+      sessionDb = getSessionDb(validatedState.sessionId);
+    }
+
     const transition = handleModeTransition(
       validatedState,
       "dialogue",
@@ -582,6 +687,13 @@ app.post(
 
     // If transitioning to dialogue, get a new character
     if (transition.mode === "dialogue") {
+      if (!sessionDb) {
+        throw new ValidationError(
+          "Session not found. Please start a new game.",
+          "sessionId"
+        );
+      }
+
       const excludeIds = req.body.excludeIds || [];
       const rawCharacter = getCharacterForScene({
         location: transformedState.location,
@@ -610,6 +722,7 @@ app.post(
           location: transformedState.location,
           playerId: transformedState.playerName,
           consequenceType: randomType,
+          sessionDb, // Pass session DB
         });
       } else {
         // Generate regular conversational dialogue
@@ -618,6 +731,7 @@ app.post(
           state: transformedState,
           location: transformedState.location,
           playerId: transformedState.playerName,
+          sessionDb, // Pass session DB
         });
       }
 
@@ -1018,6 +1132,1181 @@ app.post("/api/apply-choice", async (req, res) => {
   }
 });
 
+// Phase 1: Supply Management API Endpoints
+app.get(
+  "/api/supplies",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const supplies = sessionDb
+      .prepare(
+        `
+      SELECT supply_type, quantity, max_capacity, last_consumed 
+      FROM session_supplies 
+      WHERE session_id = ?
+    `
+      )
+      .all(sessionId);
+
+    // Convert to object format
+    const suppliesObj = {};
+    supplies.forEach((row) => {
+      suppliesObj[row.supply_type] = {
+        current: row.quantity,
+        max: row.max_capacity,
+        lastConsumed: row.last_consumed,
+      };
+    });
+
+    res.json({ supplies: suppliesObj });
+  })
+);
+
+app.post(
+  "/api/supplies/consume",
+  asyncHandler(async (req, res) => {
+    const { sessionId, type, amount } = req.body;
+
+    if (!sessionId || !type || typeof amount !== "number") {
+      throw new ValidationError("sessionId, type, and amount are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Update supply quantity
+    const result = sessionDb
+      .prepare(
+        `
+      UPDATE session_supplies 
+      SET quantity = MAX(0, quantity - ?), last_consumed = ?
+      WHERE session_id = ? AND supply_type = ?
+    `
+      )
+      .run(amount, currentTime, sessionId, type);
+
+    if (result.changes === 0) {
+      throw new ValidationError("Supply type not found");
+    }
+
+    // Get updated supply data
+    const updatedSupply = sessionDb
+      .prepare(
+        `
+      SELECT supply_type, quantity, max_capacity, last_consumed 
+      FROM session_supplies 
+      WHERE session_id = ? AND supply_type = ?
+    `
+      )
+      .get(sessionId, type);
+
+    res.json({
+      success: true,
+      supply: {
+        type: updatedSupply.supply_type,
+        current: updatedSupply.quantity,
+        max: updatedSupply.max_capacity,
+        lastConsumed: updatedSupply.last_consumed,
+      },
+    });
+  })
+);
+
+// Phase 1: Survival Status API Endpoint
+app.get(
+  "/api/survival/status",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const survival = sessionDb
+      .prepare(
+        `
+      SELECT last_food_consumption, last_water_consumption, 
+             starvation_stage, dehydration_stage, survival_modifiers
+      FROM session_survival 
+      WHERE session_id = ?
+    `
+      )
+      .get(sessionId);
+
+    if (!survival) {
+      // Return default survival state
+      res.json({
+        survival: {
+          lastFoodConsumption: Math.floor(Date.now() / 1000),
+          lastWaterConsumption: Math.floor(Date.now() / 1000),
+          starvationStage: 0,
+          dehydrationStage: 0,
+          survivalModifiers: {},
+          timeRemaining: {
+            dehydration: 72 * 3600,
+            starvation: 21 * 24 * 3600,
+          },
+        },
+      });
+      return;
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+    const timeSinceWater = currentTime - survival.last_water_consumption;
+    const timeSinceFood = currentTime - survival.last_food_consumption;
+
+    res.json({
+      survival: {
+        lastFoodConsumption: survival.last_food_consumption,
+        lastWaterConsumption: survival.last_water_consumption,
+        starvationStage: survival.starvation_stage,
+        dehydrationStage: survival.dehydration_stage,
+        survivalModifiers: JSON.parse(survival.survival_modifiers || "{}"),
+        timeRemaining: {
+          dehydration: Math.max(0, 72 * 3600 - timeSinceWater),
+          starvation: Math.max(0, 21 * 24 * 3600 - timeSinceFood),
+        },
+      },
+    });
+  })
+);
+
+// Phase 2: Party Management API Endpoints
+app.get(
+  "/api/party",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const party = sessionDb
+      .prepare(
+        `
+      SELECT character_id, role, skills, stats, reputation_groups, 
+             recruited_at, languages
+      FROM session_party 
+      WHERE session_id = ?
+    `
+      )
+      .all(sessionId);
+
+    // Convert to PartyMember format
+    const partyMembers = party.map((row) => ({
+      characterId: row.character_id,
+      name: row.character_id, // TODO: Get actual name from character data
+      role: row.role,
+      skills: JSON.parse(row.skills || "[]"),
+      stats: JSON.parse(row.stats || "{}"),
+      reputationGroups: JSON.parse(row.reputation_groups || "{}"),
+      recruitedAt: row.recruited_at,
+      languages: JSON.parse(row.languages || "[]"),
+    }));
+
+    res.json({ party: partyMembers });
+  })
+);
+
+app.post(
+  "/api/party/recruit",
+  asyncHandler(async (req, res) => {
+    const { sessionId, characterData } = req.body;
+
+    if (!sessionId || !characterData) {
+      throw new ValidationError("sessionId and characterData are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Insert new party member
+    sessionDb
+      .prepare(
+        `
+      INSERT INTO session_party 
+      (session_id, character_id, role, skills, stats, reputation_groups, recruited_at, languages)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `
+      )
+      .run(
+        sessionId,
+        characterData.id,
+        characterData.role || "companion",
+        JSON.stringify(characterData.skills || []),
+        JSON.stringify({
+          morale: characterData.morale || 75,
+          trustworthiness: characterData.trustworthiness || 50,
+          charisma: characterData.charisma || 60,
+          strength: characterData.strength || 70,
+          knowledge: characterData.knowledge || 65,
+          instincts: characterData.instincts || 55,
+          playerLiking: characterData.playerLiking || 50,
+        }),
+        JSON.stringify(characterData.reputationGroups || {}),
+        currentTime,
+        JSON.stringify(characterData.languages || ["Portuguese"])
+      );
+
+    res.json({ success: true, message: "Party member recruited" });
+  })
+);
+
+app.delete(
+  "/api/party/:characterId",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+    const { characterId } = req.params;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const result = sessionDb
+      .prepare(
+        `
+      DELETE FROM session_party 
+      WHERE session_id = ? AND character_id = ?
+    `
+      )
+      .run(sessionId, characterId);
+
+    if (result.changes === 0) {
+      throw new ValidationError("Party member not found");
+    }
+
+    res.json({ success: true, message: "Party member dismissed" });
+  })
+);
+
+// Phase 2: Economy API Endpoints
+app.get(
+  "/api/economy",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const economy = sessionDb
+      .prepare(
+        `
+      SELECT currency_amount, barter_goods
+      FROM session_economy 
+      WHERE session_id = ?
+    `
+      )
+      .get(sessionId);
+
+    if (!economy) {
+      // Return default economy state
+      res.json({
+        economy: {
+          currencyAmount: 1000,
+          barterGoods: {},
+        },
+      });
+      return;
+    }
+
+    res.json({
+      economy: {
+        currencyAmount: economy.currency_amount,
+        barterGoods: JSON.parse(economy.barter_goods || "{}"),
+      },
+    });
+  })
+);
+
+app.post(
+  "/api/economy/trade",
+  asyncHandler(async (req, res) => {
+    const { sessionId, tradeData } = req.body;
+
+    if (!sessionId || !tradeData) {
+      throw new ValidationError("sessionId and tradeData are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const { type, item, quantity, price } = tradeData;
+    const totalCost = price * quantity;
+
+    // Get current economy state
+    const economy = sessionDb
+      .prepare(
+        `
+      SELECT currency_amount, barter_goods
+      FROM session_economy 
+      WHERE session_id = ?
+    `
+      )
+      .get(sessionId);
+
+    if (!economy) {
+      throw new ValidationError("Economy state not found");
+    }
+
+    const currentCurrency = economy.currency_amount;
+    const currentBarterGoods = JSON.parse(economy.barter_goods || "{}");
+
+    if (type === "buy") {
+      if (currentCurrency < totalCost) {
+        throw new ValidationError("Insufficient funds");
+      }
+
+      // Update currency
+      sessionDb
+        .prepare(
+          `
+        UPDATE session_economy 
+        SET currency_amount = currency_amount - ?
+        WHERE session_id = ?
+      `
+        )
+        .run(totalCost, sessionId);
+
+      // Add item to supplies or barter goods
+      if (["food", "water", "medicine", "fuel", "tools"].includes(item)) {
+        // Update supplies (handled by supplies API)
+        res.json({ success: true, message: "Trade completed" });
+      } else {
+        // Add to barter goods
+        const newBarterGoods = { ...currentBarterGoods };
+        newBarterGoods[item] = (newBarterGoods[item] || 0) + quantity;
+
+        sessionDb
+          .prepare(
+            `
+          UPDATE session_economy 
+          SET barter_goods = ?
+          WHERE session_id = ?
+        `
+          )
+          .run(JSON.stringify(newBarterGoods), sessionId);
+
+        res.json({ success: true, message: "Trade completed" });
+      }
+    } else if (type === "sell") {
+      // Update currency
+      sessionDb
+        .prepare(
+          `
+        UPDATE session_economy 
+        SET currency_amount = currency_amount + ?
+        WHERE session_id = ?
+      `
+        )
+        .run(totalCost, sessionId);
+
+      // Remove item from supplies or barter goods
+      if (["food", "water", "medicine", "fuel", "tools"].includes(item)) {
+        // Update supplies (handled by supplies API)
+        res.json({ success: true, message: "Trade completed" });
+      } else {
+        // Remove from barter goods
+        const newBarterGoods = { ...currentBarterGoods };
+        newBarterGoods[item] = Math.max(
+          0,
+          (newBarterGoods[item] || 0) - quantity
+        );
+
+        sessionDb
+          .prepare(
+            `
+          UPDATE session_economy 
+          SET barter_goods = ?
+          WHERE session_id = ?
+        `
+          )
+          .run(JSON.stringify(newBarterGoods), sessionId);
+
+        res.json({ success: true, message: "Trade completed" });
+      }
+    } else {
+      throw new ValidationError("Invalid trade type");
+    }
+  })
+);
+
+// Phase 3: Weather API Endpoints
+app.get(
+  "/api/weather",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const WeatherManager = (await import("./game/weatherManager.js")).default;
+    const weatherManager = new WeatherManager();
+
+    const weather = weatherManager.getCurrentWeather(sessionDb, sessionId);
+
+    res.json({ weather });
+  })
+);
+
+app.post(
+  "/api/weather/update",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.body;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const WeatherManager = (await import("./game/weatherManager.js")).default;
+    const weatherManager = new WeatherManager();
+
+    const weather = weatherManager.updateWeather(sessionDb, sessionId);
+
+    res.json({ weather });
+  })
+);
+
+// Phase 3: Minimap API Endpoints
+app.get(
+  "/api/minimap",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const discovered = sessionDb
+      .prepare(
+        `
+        SELECT location_id, discovered_at
+        FROM session_minimap 
+        WHERE session_id = ? AND discovered = TRUE
+      `
+      )
+      .all(sessionId);
+
+    const discoveredLocations = discovered.map((row) => row.location_id);
+
+    res.json({
+      minimap: {
+        discoveredLocations,
+        currentLocation: "loreto", // TODO: Get from game state
+      },
+    });
+  })
+);
+
+app.post(
+  "/api/minimap/discover",
+  asyncHandler(async (req, res) => {
+    const { sessionId, locationId } = req.body;
+
+    if (!sessionId || !locationId) {
+      throw new ValidationError("sessionId and locationId are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Insert or update discovery
+    sessionDb
+      .prepare(
+        `
+        INSERT OR REPLACE INTO session_minimap 
+        (session_id, location_id, discovered, discovered_at)
+        VALUES (?, ?, TRUE, ?)
+      `
+      )
+      .run(sessionId, locationId, currentTime);
+
+    res.json({ success: true, message: "Location discovered" });
+  })
+);
+
+// Phase 3: Camping API Endpoints
+app.get(
+  "/api/camping",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const camping = sessionDb
+      .prepare(
+        `
+        SELECT camp_location, camp_setup_time, camp_safety_level, 
+               camp_events, last_camp_time
+        FROM session_camping 
+        WHERE session_id = ?
+      `
+      )
+      .get(sessionId);
+
+    if (!camping) {
+      // Return default camping state
+      res.json({
+        camping: {
+          lastCampTime: null,
+          campLocation: null,
+          campSafetyLevel: 50,
+          campEvents: [],
+        },
+      });
+      return;
+    }
+
+    res.json({
+      camping: {
+        lastCampTime: camping.last_camp_time,
+        campLocation: camping.camp_location,
+        campSafetyLevel: camping.camp_safety_level,
+        campEvents: JSON.parse(camping.camp_events || "[]"),
+      },
+    });
+  })
+);
+
+app.post(
+  "/api/camping/setup",
+  asyncHandler(async (req, res) => {
+    const { sessionId, locationId, safetyLevel } = req.body;
+
+    if (!sessionId || !locationId) {
+      throw new ValidationError("sessionId and locationId are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const currentTime = Math.floor(Date.now() / 1000);
+
+    // Update camping state
+    sessionDb
+      .prepare(
+        `
+        INSERT OR REPLACE INTO session_camping 
+        (session_id, camp_location, camp_setup_time, camp_safety_level, last_camp_time)
+        VALUES (?, ?, ?, ?, ?)
+      `
+      )
+      .run(sessionId, locationId, currentTime, safetyLevel || 50, currentTime);
+
+    res.json({ success: true, message: "Camp set up successfully" });
+  })
+);
+
+app.post(
+  "/api/camping/event",
+  asyncHandler(async (req, res) => {
+    const { sessionId, eventData } = req.body;
+
+    if (!sessionId || !eventData) {
+      throw new ValidationError("sessionId and eventData are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    // Get current camp events
+    const camping = sessionDb
+      .prepare(
+        `
+        SELECT camp_events FROM session_camping WHERE session_id = ?
+      `
+      )
+      .get(sessionId);
+
+    const currentEvents = JSON.parse(camping?.camp_events || "[]");
+    const newEvents = [...currentEvents, eventData];
+
+    // Update camp events
+    sessionDb
+      .prepare(
+        `
+        UPDATE session_camping 
+        SET camp_events = ?
+        WHERE session_id = ?
+      `
+      )
+      .run(JSON.stringify(newEvents), sessionId);
+
+    res.json({ success: true, message: "Camp event recorded" });
+  })
+);
+
+// Phase 4: Equipment API Endpoints
+app.get(
+  "/api/equipment",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const EquipmentManager = (await import("./game/equipmentManager.js"))
+      .default;
+    const equipmentManager = new EquipmentManager();
+
+    const equipment = equipmentManager.getEquipment(sessionDb, sessionId);
+
+    res.json({ equipment });
+  })
+);
+
+app.post(
+  "/api/equipment/add",
+  asyncHandler(async (req, res) => {
+    const { sessionId, itemId, acquiredFrom } = req.body;
+
+    if (!sessionId || !itemId) {
+      throw new ValidationError("sessionId and itemId are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const EquipmentManager = (await import("./game/equipmentManager.js"))
+      .default;
+    const equipmentManager = new EquipmentManager();
+
+    const equipment = equipmentManager.addEquipment(
+      sessionDb,
+      sessionId,
+      itemId,
+      acquiredFrom
+    );
+
+    res.json({ success: true, equipment });
+  })
+);
+
+app.delete(
+  "/api/equipment/:itemId",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.query;
+    const { itemId } = req.params;
+
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const EquipmentManager = (await import("./game/equipmentManager.js"))
+      .default;
+    const equipmentManager = new EquipmentManager();
+
+    const success = equipmentManager.removeEquipment(
+      sessionDb,
+      sessionId,
+      itemId
+    );
+
+    res.json({ success });
+  })
+);
+
+// Phase 4: Enhanced Travel API Endpoints
+app.get(
+  "/api/travel/options",
+  asyncHandler(async (req, res) => {
+    const { sessionId, currentLocation } = req.query;
+
+    if (!sessionId || !currentLocation) {
+      throw new ValidationError("sessionId and currentLocation are required");
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const TravelManager = (await import("./game/travelManager.js")).default;
+    const travelManager = new TravelManager();
+
+    // Get weather data
+    const WeatherManager = (await import("./game/weatherManager.js")).default;
+    const weatherManager = new WeatherManager();
+    const weather = weatherManager.getCurrentWeather(sessionDb, sessionId);
+
+    // Get party skills
+    const party = sessionDb
+      .prepare(
+        `
+        SELECT skills FROM session_party WHERE session_id = ?
+      `
+      )
+      .all(sessionId);
+
+    const partySkills = {};
+    party.forEach((member) => {
+      const skills = JSON.parse(member.skills || "[]");
+      skills.forEach((skill) => {
+        if (!partySkills[skill.type]) {
+          partySkills[skill.type] = 0;
+        }
+        partySkills[skill.type] += skill.level;
+      });
+    });
+
+    // Get equipment effects
+    const EquipmentManager = (await import("./game/equipmentManager.js"))
+      .default;
+    const equipmentManager = new EquipmentManager();
+    const equipmentEffects = equipmentManager.getEquipmentEffects(
+      sessionDb,
+      sessionId
+    );
+
+    const travelOptions = travelManager.getTravelOptions(
+      currentLocation,
+      weather,
+      partySkills,
+      equipmentEffects
+    );
+
+    res.json({ travelOptions });
+  })
+);
+
+app.post(
+  "/api/travel/calculate",
+  asyncHandler(async (req, res) => {
+    const { sessionId, fromLocation, toLocation } = req.body;
+
+    if (!sessionId || !fromLocation || !toLocation) {
+      throw new ValidationError(
+        "sessionId, fromLocation, and toLocation are required"
+      );
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const TravelManager = (await import("./game/travelManager.js")).default;
+    const travelManager = new TravelManager();
+
+    // Get weather data
+    const WeatherManager = (await import("./game/weatherManager.js")).default;
+    const weatherManager = new WeatherManager();
+    const weather = weatherManager.getCurrentWeather(sessionDb, sessionId);
+
+    // Get party skills
+    const party = sessionDb
+      .prepare(
+        `
+        SELECT skills FROM session_party WHERE session_id = ?
+      `
+      )
+      .all(sessionId);
+
+    const partySkills = {};
+    party.forEach((member) => {
+      const skills = JSON.parse(member.skills || "[]");
+      skills.forEach((skill) => {
+        if (!partySkills[skill.type]) {
+          partySkills[skill.type] = 0;
+        }
+        partySkills[skill.type] += skill.level;
+      });
+    });
+
+    // Get equipment effects
+    const EquipmentManager = (await import("./game/equipmentManager.js"))
+      .default;
+    const equipmentManager = new EquipmentManager();
+    const equipmentEffects = equipmentManager.getEquipmentEffects(
+      sessionDb,
+      sessionId
+    );
+
+    const modifiers = {
+      weather,
+      partySkills,
+      equipment: equipmentEffects,
+    };
+
+    const travelInfo = travelManager.calculateTravelTime(
+      fromLocation,
+      toLocation,
+      modifiers
+    );
+
+    res.json({ travelInfo });
+  })
+);
+
+app.post(
+  "/api/travel/execute",
+  asyncHandler(async (req, res) => {
+    const { sessionId, fromLocation, toLocation, retreatType } = req.body;
+
+    if (!sessionId || !fromLocation || !toLocation) {
+      throw new ValidationError(
+        "sessionId, fromLocation, and toLocation are required"
+      );
+    }
+
+    const sessionDb = getSessionDb(sessionId);
+    if (!sessionDb) {
+      throw new ValidationError("Session not found");
+    }
+
+    const TravelManager = (await import("./game/travelManager.js")).default;
+    const travelManager = new TravelManager();
+
+    // Get weather data
+    const WeatherManager = (await import("./game/weatherManager.js")).default;
+    const weatherManager = new WeatherManager();
+    const weather = weatherManager.getCurrentWeather(sessionDb, sessionId);
+
+    // Get party skills
+    const party = sessionDb
+      .prepare(
+        `
+        SELECT skills FROM session_party WHERE session_id = ?
+      `
+      )
+      .all(sessionId);
+
+    const partySkills = {};
+    party.forEach((member) => {
+      const skills = JSON.parse(member.skills || "[]");
+      skills.forEach((skill) => {
+        if (!partySkills[skill.type]) {
+          partySkills[skill.type] = 0;
+        }
+        partySkills[skill.type] += skill.level;
+      });
+    });
+
+    // Get equipment effects
+    const EquipmentManager = (await import("./game/equipmentManager.js"))
+      .default;
+    const equipmentManager = new EquipmentManager();
+    const equipmentEffects = equipmentManager.getEquipmentEffects(
+      sessionDb,
+      sessionId
+    );
+
+    const modifiers = {
+      weather,
+      partySkills,
+      equipment: equipmentEffects,
+    };
+
+    let travelInfo;
+    if (retreatType) {
+      travelInfo = travelManager.calculateRetreat(
+        fromLocation,
+        toLocation,
+        retreatType,
+        modifiers
+      );
+    } else {
+      travelInfo = travelManager.calculateTravelTime(
+        fromLocation,
+        toLocation,
+        modifiers
+      );
+    }
+
+    // Update travel state
+    travelInfo.destination = toLocation;
+    travelInfo.isRetreat = !!retreatType;
+    travelManager.updateTravelState(sessionDb, sessionId, travelInfo);
+
+    res.json({ success: true, travelInfo });
+  })
+);
+
+// Content Generation API endpoints
+app.get(
+  "/api/content/characters",
+  asyncHandler(async (req, res) => {
+    const { biome, type, rarity } = req.query;
+    const ContentGenerator = (await import("./game/contentGenerator.js"))
+      .default;
+    const contentGenerator = new ContentGenerator();
+
+    // Get character templates from the generator
+    const characters =
+      contentGenerator.templates.characters[biome] ||
+      contentGenerator.templates.characters.default;
+    res.json({ characters });
+  })
+);
+
+app.get(
+  "/api/content/locations",
+  asyncHandler(async (req, res) => {
+    const { biome, type, rarity } = req.query;
+    const ContentGenerator = (await import("./game/contentGenerator.js"))
+      .default;
+    const contentGenerator = new ContentGenerator();
+
+    // Get location templates from the generator
+    const locations =
+      contentGenerator.templates.locations[biome] ||
+      contentGenerator.templates.locations.default;
+    res.json({ locations });
+  })
+);
+
+app.get(
+  "/api/content/animals",
+  asyncHandler(async (req, res) => {
+    const { biome, type, rarity } = req.query;
+    const ContentGenerator = (await import("./game/contentGenerator.js"))
+      .default;
+    const contentGenerator = new ContentGenerator();
+
+    // Get animal templates from the generator
+    const animals =
+      contentGenerator.templates.animals[biome] ||
+      contentGenerator.templates.animals.default;
+    res.json({ animals });
+  })
+);
+
+app.get(
+  "/api/content/items",
+  asyncHandler(async (req, res) => {
+    const { biome, type, rarity } = req.query;
+    const ContentGenerator = (await import("./game/contentGenerator.js"))
+      .default;
+    const contentGenerator = new ContentGenerator();
+
+    // Get item templates from the generator
+    const items =
+      contentGenerator.templates.items[biome] ||
+      contentGenerator.templates.items.default;
+    res.json({ items });
+  })
+);
+
+app.post(
+  "/api/content/generate",
+  asyncHandler(async (req, res) => {
+    const { type, biome, context } = req.body;
+    if (!type || !biome) {
+      throw new ValidationError("type and biome are required");
+    }
+    const ContentGenerator = (await import("./game/contentGenerator.js"))
+      .default;
+    const contentGenerator = new ContentGenerator();
+
+    let generatedContent;
+    switch (type) {
+      case "character":
+        generatedContent = contentGenerator.generateCharacter(
+          biome,
+          biome,
+          context?.difficulty || 1,
+          context
+        );
+        break;
+      case "location":
+        generatedContent = contentGenerator.generateLocation(
+          biome,
+          context?.position || {},
+          context?.connections || [],
+          context?.worldState || {}
+        );
+        break;
+      case "animal":
+        generatedContent = contentGenerator.generateAnimalEncounter(
+          biome,
+          context?.timeOfDay || "morning",
+          context?.weather || { type: "normal" },
+          context?.playerLevel || 1
+        );
+        break;
+      case "item":
+        generatedContent = contentGenerator.generateItem(
+          biome,
+          context?.rarity || "common",
+          context
+        );
+        break;
+      default:
+        throw new ValidationError("Invalid content type");
+    }
+
+    res.json({ content: generatedContent });
+  })
+);
+
+// Dynamic Storytelling API endpoints
+app.post(
+  "/api/story/record-choice",
+  asyncHandler(async (req, res) => {
+    const { sessionId, choiceId, choice, context } = req.body;
+    if (!sessionId || !choiceId || !choice) {
+      throw new ValidationError("sessionId, choiceId, and choice are required");
+    }
+    const StoryManager = (await import("./game/storyManager.js")).default;
+    const storyManager = new StoryManager();
+    const choiceRecord = storyManager.recordChoice(
+      sessionId,
+      choiceId,
+      choice,
+      context
+    );
+    res.json({ choiceRecord });
+  })
+);
+
+app.get(
+  "/api/story/choices/:sessionId",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+    const StoryManager = (await import("./game/storyManager.js")).default;
+    const storyManager = new StoryManager();
+    const choices = storyManager.getPlayerChoices(sessionId);
+    res.json({ choices });
+  })
+);
+
+app.get(
+  "/api/story/world-state/:sessionId",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+    const StoryManager = (await import("./game/storyManager.js")).default;
+    const storyManager = new StoryManager();
+    const worldState = storyManager.getWorldState(sessionId);
+    res.json({ worldState });
+  })
+);
+
+app.get(
+  "/api/story/narratives/:sessionId",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.params;
+    const StoryManager = (await import("./game/storyManager.js")).default;
+    const storyManager = new StoryManager();
+    const narratives = storyManager.getEmergentNarratives(sessionId);
+    res.json({ narratives });
+  })
+);
+
+app.post(
+  "/api/story/generate-narrative",
+  asyncHandler(async (req, res) => {
+    const { sessionId, context } = req.body;
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+    const StoryManager = (await import("./game/storyManager.js")).default;
+    const storyManager = new StoryManager();
+    const narrative = storyManager.generateEmergentNarrative(
+      sessionId,
+      context
+    );
+    res.json({ narrative });
+  })
+);
+
+app.post(
+  "/api/story/apply-consequences",
+  asyncHandler(async (req, res) => {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      throw new ValidationError("sessionId is required");
+    }
+    const StoryManager = (await import("./game/storyManager.js")).default;
+    const storyManager = new StoryManager();
+    const appliedConsequences =
+      storyManager.applyScheduledConsequences(sessionId);
+    res.json({ appliedConsequences });
+  })
+);
+
 // Optional: Serve built web app from apps/web/dist
 const distPath = path.join(__dirname, "../../web/dist");
 if (fs.existsSync(distPath)) {
@@ -1074,10 +2363,15 @@ async function startServer() {
   dialogueNarrator = new DialogueNarrator({ mcpTools });
   console.log("✅ DialogueNarrator initialized with MCP tools");
 
+  // Start session cleanup (runs every hour)
+  startSessionCleanup();
+  console.log("✅ Session cleanup scheduler started");
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`🌊 Igapó server running on http://localhost:${PORT}`);
     console.log(`📡 API available at http://localhost:${PORT}/api`);
     console.log(`🎮 Hybrid Interaction System enabled`);
+    console.log(`💾 Session-based character system active`);
   });
 }
 

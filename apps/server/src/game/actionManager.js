@@ -3,6 +3,8 @@
  * Part of the Hybrid Interaction System
  */
 
+import { determineLocationEncounter } from "./encounterManager.js";
+
 // Base actions always available (filtered by context)
 const MOVEMENT_ACTIONS = [
   {
@@ -345,7 +347,32 @@ const resolveActionInternal = (state, action, mcpTools) => {
 
   // Handle mode transitions
   let modeTransition = null;
-  if (action.mode_transition) {
+
+  // Check if player moved to a new location (progress changed)
+  if (deltas.progress && deltas.progress > 0 && !action.mode_transition) {
+    // Determine what encounter happens at the new location
+    const newLocation = nextState.route[nextState.progress];
+    const encounter = determineLocationEncounter(newLocation, nextState);
+
+    // Create mode transition based on encounter
+    modeTransition = {
+      to: encounter.mode,
+      reason: encounter.reason,
+      message: encounter.message,
+      context: encounter.context,
+    };
+
+    nextState.currentMode = encounter.mode;
+
+    // Update mode context for the new mode
+    if (encounter.context) {
+      nextState.modeContext[encounter.mode] = {
+        ...nextState.modeContext[encounter.mode],
+        ...encounter.context,
+      };
+    }
+  } else if (action.mode_transition) {
+    // Action explicitly specifies a mode transition
     modeTransition = action.mode_transition;
     nextState.currentMode = action.mode_transition.to;
 

@@ -6,7 +6,7 @@
   "main": "dist/server.js",
   "types": "dist/server.d.ts",
   "scripts": {
-    "dev": "node --watch ./src/server.js",
+    "dev": "node --watch --watch-path=./src ./src/server.js",
     "build": "rimraf dist && tsc -p tsconfig.json",
     "clean": "rimraf dist",
     "test": "echo \"(server) no tests yet\""
