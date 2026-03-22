@@ -4,7 +4,8 @@ import type { ArchetypeId } from "@igapo/shared";
 import { RiverMap } from "../systems/RiverMap";
 import { GameState } from "../systems/GameState";
 import { CrisisManager } from "../systems/CrisisManager";
-import { ENCOUNTERS } from "../data/encounterData";
+import { selectEncounter } from "../data/encounterSelector";
+import { generateRun } from "../data/mapGenerator";
 
 interface MapSceneData {
   archetypeId: ArchetypeId;
@@ -48,10 +49,14 @@ export class MapScene extends Phaser.Scene {
 
     // Trigger the opening encounter at the starting town
     this.time.delayedCall(400, () => {
-      const startEncounter = ENCOUNTERS["town_start"];
-      if (startEncounter) {
-        this.scene.launch("EncounterScene", { node: startEncounter, state: this.state });
-        this.scene.pause("MapScene");
+      const run = generateRun();
+      const startNode = run.nodes.find(n => n.id === "start");
+      if (startNode) {
+        const enc = selectEncounter(startNode, this.state);
+        if (enc) {
+          this.scene.launch("EncounterScene", { node: enc, state: this.state });
+          this.scene.pause("MapScene");
+        }
       }
     });
   }

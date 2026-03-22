@@ -6,6 +6,41 @@ import { GameState } from "../systems/GameState";
 export const FIELD_NOTES_BY_ID: Record<string, FieldNote> = {};
 
 const FIELD_NOTES: Record<string, FieldNote> = {
+  anaconda_behavior: {
+    id: "anaconda_behavior",
+    species: "Green Anaconda",
+    text: "Green anacondas are not aggressive without provocation. When thermoregulating on banks they are slow to move — startling them causes a defensive strike. Predictable approach at low speed prompts retreat, not attack.",
+  },
+  piranha_behavior: {
+    id: "piranha_behavior",
+    species: "Piranha",
+    text: "Piranhas are primarily scavengers. Their aggressive feeding behavior peaks midday in confined dry-season pools. Vibration and slow movement reduce threat response. Wading is riskier than poling.",
+  },
+  stingray_behavior: {
+    id: "stingray_behavior",
+    species: "River Stingray",
+    text: "Freshwater stingrays camouflage in sandy shallows and respond to vibration. Hull movement propagated through the water displaces them before physical contact. Temperature drops cause repositioning.",
+  },
+  jaguar_behavior: {
+    id: "jaguar_behavior",
+    species: "Jaguar",
+    text: "Jaguars are the only big cat in the Americas comfortable in water. They drink at predictable times — dawn and dusk at regular sites. Unlike other big cats, they kill with a single bite through the skull rather than suffocation.",
+  },
+  tapir_ecology: {
+    id: "tapir_ecology",
+    species: "Tapir",
+    text: "Tapirs disperse more seeds than any other Amazonian mammal. They are primarily nocturnal and crepuscular, using river crossings at dawn and dusk. A tapir crossing is a reliable sign of a shallow, safe ford.",
+  },
+  spectacled_owl: {
+    id: "spectacled_owl",
+    species: "Spectacled Owl",
+    text: "The spectacled owl's call — a rapid series of knocking sounds — is often mistaken for a primate. It hunts from a perch, remaining motionless for hours. Calls indicate it is either establishing territory or communicating with a mate.",
+  },
+  arapaima_ecology: {
+    id: "arapaima_ecology",
+    species: "Arapaima",
+    text: "Arapaima are obligate air-breathers that surface every 5–15 minutes. They are found in flood-season várzea lakes and retreat to deep channels in the dry season. Sustainable arapaima fishing programs in Brazil have become a model for community-managed conservation.",
+  },
   caiman_nesting: {
     id: "caiman_nesting",
     species: "Black Caiman",
@@ -269,6 +304,181 @@ export const ENCOUNTERS: Record<string, EncounterNode> = {
       },
     ],
   },
+  // ── New encounters ──────────────────────────────────────────────────────
+
+  wildlife_jaguar: {
+    id: "wildlife_jaguar",
+    title: "The Bank at Dawn",
+    type: "wildlife",
+    arrivalText:
+      "You cut the engine to drift around a tight bend — and there it is. A jaguar at the water's edge, drinking. She doesn't look up immediately. When she does, her eyes hold you for three full seconds before she turns and walks into the tree line without urgency.",
+    choices: [
+      { id: "jaguar_observe", label: "Don't move. Don't breathe. Document everything.", successChance: 1.0 },
+      { id: "jaguar_photo", label: "Reach slowly for the camera — you need this documented.", successChance: 0.7 },
+    ],
+  },
+
+  wildlife_tapir: {
+    id: "wildlife_tapir",
+    title: "Tapir at the Crossing",
+    type: "wildlife",
+    arrivalText:
+      "In the grey pre-dawn light, a tapir stands mid-river at a shallow crossing. It's enormous — the size of a small horse — and utterly calm. It watches your boat with mild interest, snout raised, reading the air.",
+    choices: [
+      { id: "tapir_observe", label: "Drift silently. Let it cross in its own time.", successChance: 1.0 },
+      { id: "tapir_approach", label: "Move closer. Tapirs are famously docile.", successChance: 0.6 },
+    ],
+  },
+
+  wildlife_tapir_night: {
+    id: "wildlife_tapir_night",
+    title: "Something on the Bank",
+    type: "wildlife",
+    arrivalText:
+      "Your spotlight catches a large dark shape at the waterline. It freezes. You cut the light — too bright, too sudden for a night encounter. In the darkness, you can hear it moving away through the shallows: heavy, unhurried.",
+    choices: [
+      { id: "tapir_night_wait", label: "Wait in darkness. Let your eyes adjust.", successChance: 0.85 },
+      { id: "tapir_night_light", label: "Sweep the spotlight — you need to identify what it is.", successChance: 0.4 },
+    ],
+  },
+
+  wildlife_capybara: {
+    id: "wildlife_capybara",
+    title: "The Colony",
+    type: "wildlife",
+    arrivalText:
+      "A family of capybaras occupies a low mudflat ahead — at least fifteen of them, including several young. A sentinel adult stands slightly apart from the group, watching the water. They seem entirely unbothered by your approach.",
+    choices: [
+      { id: "capybara_observe", label: "Slow to a drift and watch. They're a good sign — the area is calm.", successChance: 1.0 },
+      { id: "capybara_pass", label: "Pass through quietly and continue.", successChance: 1.0 },
+    ],
+  },
+
+  wildlife_anaconda: {
+    id: "wildlife_anaconda",
+    title: "The Root Mass",
+    type: "wildlife",
+    arrivalText:
+      "A thick rope of muscle is draped across the submerged roots along the bank — an anaconda, easily four meters, basking in a patch of filtered sunlight. It's partially in the water. The channel runs directly past it.",
+    choices: [
+      { id: "anaconda_observe", label: "Stop and observe from distance. Document carefully.", successChance: 1.0 },
+      { id: "anaconda_navigate", label: "Navigate past slowly on the far side. Give it the bank.", successChance: 0.8 },
+      { id: "anaconda_knowledge", label: "It's thermoregulating, not hunting. Pass at normal speed — startling it would be worse.", requiresFieldNote: "anaconda_behavior", successChance: 0.95 },
+    ],
+  },
+
+  wildlife_piranha: {
+    id: "wildlife_piranha",
+    title: "Dry Season Pool",
+    type: "wildlife",
+    arrivalText:
+      "The dry season has concentrated everything. A pool in a shrinking oxbow holds hundreds of piranha — you can see the boil of them just below the surface, jostling for space. The water here barely covers the prop. To continue you'll need to cross the shallows.",
+    choices: [
+      { id: "piranha_wade", label: "Lift the motor and wade through carefully.", successChance: 0.6 },
+      { id: "piranha_pole", label: "Pole through without entering the water.", requiresFieldNote: "piranha_behavior", successChance: 0.9 },
+      { id: "piranha_wait", label: "Wait until evening — their feeding behavior peaks midday.", requiresFieldNote: "piranha_behavior", successChance: 1.0 },
+    ],
+  },
+
+  wildlife_arapaima: {
+    id: "wildlife_arapaima",
+    title: "The Giant of the Lake",
+    type: "wildlife",
+    arrivalText:
+      "A shadow passes under the hull — then surfaces. An arapaima, two meters if it's an inch, rolling to gulp air. Its scales catch the light like hammered copper. It surfaces again twenty meters ahead, indifferent to you, going about a life that predates most of what humans call history.",
+    choices: [
+      { id: "arapaima_observe", label: "Observe and document. These sightings are increasingly rare.", successChance: 1.0 },
+      { id: "arapaima_follow", label: "Follow it. Arapaima tend to surface near shallow lake exits.", successChance: 0.8 },
+    ],
+  },
+
+  wildlife_owl: {
+    id: "wildlife_owl",
+    title: "The Knock in the Dark",
+    type: "wildlife",
+    arrivalText:
+      "Moored for the night, you hear it: a sound like someone rapping their knuckles on hollow wood, slow and deliberate, close. You sweep the nearest tree with a dim light — and find two eyes looking back at you, framed by a clown-white face. A spectacled owl, regarding you from three meters.",
+    choices: [
+      { id: "owl_observe", label: "Keep the light very low. Watch.", successChance: 1.0 },
+      { id: "owl_record", label: "Note the call pattern. It's distinctive enough to use later.", successChance: 1.0 },
+    ],
+  },
+
+  wildlife_morpho: {
+    id: "wildlife_morpho",
+    title: "The Blue Corridor",
+    type: "discovery",
+    arrivalText:
+      "A gap in the canopy has created a natural clearing above a flooded channel. Morpho butterflies — dozens of them — are working the light column. Each wingbeat flashes iridescent blue that doesn't come from pigment: it's physics, structural color, light itself being sorted. For thirty seconds you forget about the fuel gauge.",
+    choices: [
+      { id: "morpho_observe", label: "Sit with it. This is why you came.", successChance: 1.0 },
+    ],
+  },
+
+  wildlife_stingray: {
+    id: "wildlife_stingray",
+    title: "Shallow Sandy Crossing",
+    type: "navigation",
+    arrivalText:
+      "A sandy-bottomed ford — the river narrows and drops to less than a meter. You can see the bottom clearly. You can also see, if you look carefully, the faint outlines of freshwater stingrays buried in the sand. Five, maybe six of them. The route requires crossing this stretch.",
+    choices: [
+      { id: "stingray_careful", label: "Proceed extremely slowly, watching every centimeter.", successChance: 0.75 },
+      { id: "stingray_knowledge", label: "Shuffle the boat hull forward — vibration before contact warns them off.", requiresFieldNote: "stingray_behavior", successChance: 0.95 },
+      { id: "stingray_wait", label: "Wait for current to shift. Stingrays move with water temperature change.", requiresFieldNote: "stingray_behavior", successChance: 1.0 },
+    ],
+  },
+
+  human_trader: {
+    id: "human_trader",
+    title: "The Trading Boat",
+    type: "human",
+    arrivalText:
+      "A wooden boat piled with goods sits moored at a makeshift dock — cooking oil, rope, batteries, medicine in unlabeled bottles. The operator, a slight man with a sun-bleached hat, calls out before you've docked: 'I've got what you need. Question is whether you've got what I want.'",
+    choices: [
+      { id: "trader_trade", label: "Trade — offer equipment for medicine and food.", successChance: 1.0 },
+      { id: "trader_news", label: "Ask what he's heard upriver. Traders know things.", successChance: 1.0 },
+      { id: "trader_haggle", label: "Haggle. You don't have much to offer.", successChance: 0.6 },
+    ],
+  },
+
+  crisis_storm: {
+    id: "crisis_storm",
+    title: "The Storm",
+    type: "navigation",
+    arrivalText:
+      "It hits without the warning you thought you had. Rain arrives horizontal, reducing visibility to ten meters. The river churns white. A dead tree, dislodged upstream, passes six meters off the bow moving faster than you can navigate. You need to make a decision immediately.",
+    choices: [
+      { id: "storm_shelter", label: "Find the nearest bank and shelter until it passes.", successChance: 0.85 },
+      { id: "storm_push", label: "Push through — you can't afford to lose the time.", successChance: 0.3 },
+      { id: "storm_navigate_knowledge", label: "Use the current to your advantage — ride the storm rather than fight it.", requiresFieldNote: "boto_navigation", successChance: 0.7 },
+    ],
+  },
+
+  nav_fallen_tree: {
+    id: "nav_fallen_tree",
+    title: "The Fallen Ceiba",
+    type: "navigation",
+    arrivalText:
+      "A ceiba tree — enormous, centuries old — has fallen across the channel. The crown is submerged; the trunk blocks three-quarters of the passage. A narrow gap remains near the far bank. The water is moving fast here.",
+    choices: [
+      { id: "tree_gap", label: "Take the gap carefully at low throttle.", successChance: 0.7 },
+      { id: "tree_portage", label: "Portage — pull everything over the trunk by hand.", successChance: 0.95 },
+      { id: "tree_guide_knowledge", label: "Read the current. The gap is deeper than it looks — take it at speed.", requiresFieldNote: "boto_navigation", successChance: 0.9 },
+    ],
+  },
+
+  human_ngo: {
+    id: "human_ngo",
+    title: "The Conservation Team",
+    type: "human",
+    arrivalText:
+      "Three people in matching shirts — an NGO logo on the chest — are interviewing an elderly woman on her porch while a fourth photographs her fish traps. The woman looks patient in the way people look patient when they have learned that patience is the fastest way through certain conversations.",
+    choices: [
+      { id: "ngo_observe", label: "Wait at the dock. Don't interrupt.", successChance: 1.0 },
+      { id: "ngo_engage", label: "Introduce yourself to the team leader.", successChance: 1.0 },
+      { id: "ngo_speak_elder", label: "Wait for the team to leave, then speak with the elder directly.", successChance: 0.8 },
+    ],
+  },
 };
 
 // --- Outcome resolver ---
@@ -449,6 +659,268 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
     text: "The station director listens without interrupting. When you finish, she pulls out the map with the red circle. 'You're the third expedition to come back with pieces of this. The first two didn't get as far as you.' She taps the Zona Silenciosa. 'We need someone to go in. Not this season. But next season — with the right equipment.' She looks at you.",
     resourceDelta: {},
   }),
+
+  // ── New outcomes ──────────────────────────────────────────────────────────
+
+  jaguar_observe: () => ({
+    text: "You don't move for four minutes. The jaguar drinks, scans the opposite bank, then melts into the undergrowth without sound. You have a field note and the memory of being looked at by something that categorized you and found you uninteresting.",
+    fieldNote: FIELD_NOTES.jaguar_behavior,
+    resourceDelta: { morale: 10 },
+  }),
+
+  jaguar_photo: (success) => success
+    ? {
+        text: "Your hand is steadier than you thought. You get three clear frames. The jaguar glances at the click of the shutter — not alarmed, just noting it — and walks away.",
+        fieldNote: FIELD_NOTES.jaguar_behavior,
+        resourceDelta: { morale: 8 },
+      }
+    : {
+        text: "The movement spooks her. She's gone in a second — a flash of spots, then nothing. You don't get the shot. But the sighting itself is logged.",
+        resourceDelta: { morale: 3 },
+      },
+
+  tapir_observe: () => ({
+    text: "The tapir crosses at its own pace. It pauses once to look at you — ancient, calm eyes — then climbs the far bank and disappears. Where it crossed is knee-deep at most. You note the ford.",
+    fieldNote: FIELD_NOTES.tapir_ecology,
+    resourceDelta: { morale: 8 },
+  }),
+
+  tapir_approach: (success) => success
+    ? {
+        text: "Tapirs are indeed docile. It watches you approach, huffs once, then continues grazing. You get within ten meters before it ambles away.",
+        fieldNote: FIELD_NOTES.tapir_ecology,
+        resourceDelta: { morale: 6 },
+      }
+    : {
+        text: "Docile doesn't mean unbothered. It bolts into the undergrowth, crashing through brush, and you've startled the whole bank.",
+        resourceDelta: { morale: -5 },
+      },
+
+  tapir_night_wait: (success) => success
+    ? {
+        text: "As your eyes adjust, you pick out the tapir shape — enormous, snuffling at the bank. It grazes for ten minutes, unaware of you, then wades back into the night shallows.",
+        fieldNote: FIELD_NOTES.tapir_ecology,
+        resourceDelta: {},
+      }
+    : {
+        text: "Whatever it was has moved on by the time your eyes adjust. The bank is empty.",
+        resourceDelta: {},
+      },
+
+  tapir_night_light: (success) => success
+    ? {
+        text: "You catch it just as it turns — a tapir, caught in the light, staring back at you before it bolts. Confirmed at least.",
+        resourceDelta: {},
+      }
+    : {
+        text: "The light spooks it instantly. Gone before you can identify it properly. The bank's crashing brush tells you it was large.",
+        resourceDelta: { morale: -3 },
+      },
+
+  capybara_observe: () => ({
+    text: "The sentinel adult monitors you for two minutes, then apparently files you under 'not a threat' and returns to grazing. The young ones climb over each other in the shallows. This is what ecological health looks like — large herbivores, relaxed, in the open.",
+    resourceDelta: { morale: 12 },
+  }),
+
+  capybara_pass: () => ({
+    text: "They scatter briefly at your engine, then regroup as you pass. The sentinel watches you all the way around the bend.",
+    resourceDelta: {},
+  }),
+
+  anaconda_observe: () => ({
+    text: "You watch it for twenty minutes. It doesn't move, except to taste the air once with a tongue the color of charcoal. Then the light shifts and it slides silently into the water — so fluidly it barely breaks the surface.",
+    fieldNote: FIELD_NOTES.anaconda_behavior,
+    resourceDelta: {},
+  }),
+
+  anaconda_navigate: (success) => success
+    ? {
+        text: "Wide berth, slow approach. The anaconda registers you at three meters, decides the bank is more appealing than conflict, and slides off. Clean passage.",
+        resourceDelta: {},
+      }
+    : {
+        text: "You misjudged the distance. The anaconda thrashes into the water — not at you, but the hull takes a glancing blow from its tail. Equipment takes minor damage.",
+        resourceDelta: { equipment: -10, morale: -8 },
+      },
+
+  anaconda_knowledge: () => ({
+    text: "Standard speed, steady approach. The anaconda tracks your movement, evaluates threat, and makes the rational decision — the bank is finite, the river is not. It slips in ahead of you and is gone.",
+    resourceDelta: { morale: 5 },
+  }),
+
+  piranha_wade: (success) => success
+    ? {
+        text: "You move in increments of centimeters. The piranhas jostle around your legs — they're not interested in you, they're competing for bottom scraps. You make it across with nothing worse than nerves.",
+        resourceDelta: { morale: -5 },
+      }
+    : {
+        text: "A shallow cut on your ankle from a rock — blood in the water. The piranhas react immediately. You get back in the boat with a bite that needs medicine to prevent infection.",
+        resourceDelta: { medicine: -15, morale: -15 },
+      },
+
+  piranha_pole: () => ({
+    text: "Eight careful minutes. Pole planted, push, rest, repeat. The piranhas churn below you the whole time. You emerge on the other side dry and intact.",
+    fieldNote: FIELD_NOTES.piranha_behavior,
+    resourceDelta: { morale: 5 },
+  }),
+
+  piranha_wait: () => ({
+    text: "You wait two hours in the midday heat. When the sun drops behind the canopy, the pool settles. The piranhas disperse to the edges and you cross without incident.",
+    fieldNote: FIELD_NOTES.piranha_behavior,
+    resourceDelta: { food: -5 },
+  }),
+
+  arapaima_observe: () => ({
+    text: "You watch four surfacing cycles — each time the great head rolls and gulps air, you note the interval. Around seven minutes. The arapaima is feeding, moving in slow arcs along the lake bottom. A healthy individual in healthy water.",
+    fieldNote: FIELD_NOTES.arapaima_ecology,
+    resourceDelta: { morale: 10 },
+  }),
+
+  arapaima_follow: (success) => success
+    ? {
+        text: "The arapaima leads you around the lake's perimeter and surfaces near a barely-visible channel mouth between two stands of flooded trees. A shortcut you wouldn't have found on your own.",
+        fieldNote: FIELD_NOTES.arapaima_ecology,
+        resourceDelta: { fuel: 8, morale: 8 },
+      }
+    : {
+        text: "The arapaima dives deep and you lose it. But following brought you to a quieter section of lake where the morning mist sits on the water undisturbed. Worth something.",
+        fieldNote: FIELD_NOTES.arapaima_ecology,
+        resourceDelta: { morale: 5 },
+      },
+
+  owl_observe: () => ({
+    text: "You watch it for thirty minutes in dim light. It doesn't move except to track a sound you can't hear, rotating its head in degrees, then settling again. When it finally calls — that wooden knock — the sound travels much farther through the night air than you expected.",
+    fieldNote: FIELD_NOTES.spectacled_owl,
+    resourceDelta: { morale: 12 },
+  }),
+
+  owl_record: () => ({
+    text: "You record the call pattern in your journal. It's a territorial advertisement — consistent intervals, specific cadence. You now know the signature of this individual. You'll recognize it if you ever come back.",
+    fieldNote: FIELD_NOTES.spectacled_owl,
+    resourceDelta: { morale: 10 },
+  }),
+
+  morpho_observe: () => ({
+    text: "You sit in the light column for fifteen minutes and don't write a single note. Sometimes the right response to beauty is to let it be exactly that.",
+    resourceDelta: { morale: 20 },
+  }),
+
+  stingray_careful: (success) => success
+    ? {
+        text: "Centimeter by centimeter. You can see them adjusting as you approach — the slight tremor, the realignment. Three pass within hull-width. None strike.",
+        resourceDelta: {},
+      }
+    : {
+        text: "The hull clips one. It doesn't sting the boat — but it triggers a chain reaction, three or four stingrays thrashing in all directions. You take a barb through the hull planking. Manageable but ugly.",
+        resourceDelta: { equipment: -15, medicine: -5 },
+      },
+
+  stingray_knowledge: () => ({
+    text: "Controlled vibration forward. Stingrays are displacing before you reach them — you can see the sand puffs ahead of the hull. You cross the ford without incident.",
+    fieldNote: FIELD_NOTES.stingray_behavior,
+    resourceDelta: {},
+  }),
+
+  stingray_wait: () => ({
+    text: "An hour. The afternoon temperature drops a degree — imperceptible to you, significant to a cold-blooded animal. The stingrays migrate toward the deeper end. You cross clean.",
+    fieldNote: FIELD_NOTES.stingray_behavior,
+    resourceDelta: { food: -5 },
+  }),
+
+  trader_trade: () => ({
+    text: "He drives a harder bargain than you'd like but a fairer one than you expected. You trade worn equipment for medicine and a bag of dried food. He also throws in a waterproofed map section he says 'came off a researcher's boat a few months ago.'",
+    resourceDelta: { medicine: 20, food: 15, equipment: -10 },
+  }),
+
+  trader_news: () => ({
+    text: "'Nothing moves on the upper Marié anymore,' he says, not looking up from his inventory. 'No fish boats, no community barges, nothing. Three months ago there were six families making that run. Now none.' He seals a crate. 'Market dried up. Not worth the trip.' He doesn't say what dried it up.",
+    resourceDelta: {},
+  }),
+
+  trader_haggle: (success) => success
+    ? {
+        text: "You wear him down. He sells you fuel at a grudging price and adds a can of food almost as an insult. Better than nothing.",
+        resourceDelta: { fuel: 15, food: 8 },
+      }
+    : {
+        text: "He doesn't budge. 'I have a fixed price and I have it for a reason.' You leave with nothing.",
+        resourceDelta: { morale: -5 },
+      },
+
+  storm_shelter: (success) => success
+    ? {
+        text: "You find a sheltered creek mouth and tie off to a root mass. The storm passes in forty minutes — loudly. When it clears, the river is two meters higher and a different color entirely. Equipment intact. You lost time, not resources.",
+        resourceDelta: { food: -8 },
+      }
+    : {
+        text: "The shelter holds until a wind gust brings a branch down on the canopy cover. Minor damage — waterproofing compromised, equipment exposed. It'll cost you later.",
+        resourceDelta: { equipment: -12, food: -8 },
+      },
+
+  storm_push: (success) => success
+    ? {
+        text: "Fifteen minutes of white-knuckle navigation. The river wants to put you into the bank twice. You get through on stubbornness and fuel burn.",
+        resourceDelta: { fuel: -20, morale: -10 },
+      }
+    : {
+        text: "A submerged log catches the prop. You're adrift in a storm for twenty minutes before you can repair it. Equipment takes serious damage.",
+        resourceDelta: { fuel: -15, equipment: -25, morale: -20 },
+      },
+
+  storm_navigate_knowledge: (success) => success
+    ? {
+        text: "You read the current like the botos do — not fighting the river's new geometry, finding the path of least resistance. You emerge downstream faster than sheltering would have allowed, hull intact.",
+        resourceDelta: { fuel: -10, morale: 5 },
+      }
+    : {
+        text: "The current is stronger than you read it. You navigate well but the river wins this one — minor equipment damage from debris.",
+        resourceDelta: { fuel: -12, equipment: -10 },
+      },
+
+  tree_gap: (success) => success
+    ? {
+        text: "You thread the gap with two handspans to spare on each side. The current pushes you slightly toward the trunk on exit but you correct in time.",
+        resourceDelta: {},
+      }
+    : {
+        text: "The current catches you at the wrong moment. The hull scrapes the trunk. You make it through but equipment condition takes a hit.",
+        resourceDelta: { equipment: -15, morale: -8 },
+      },
+
+  tree_portage: () => ({
+    text: "An hour of work. Every piece of equipment lifted, the hull dragged across the bark with rope and sweat. Exhausting but methodical. Nothing lost, nothing damaged.",
+    resourceDelta: { food: -10, morale: -8 },
+  }),
+
+  tree_guide_knowledge: (success) => success
+    ? {
+        text: "Speed is counterintuitive but it works — the momentum carries you past the turbulence before the current can turn you. Clean passage in seconds.",
+        resourceDelta: { fuel: -5 },
+      }
+    : {
+        text: "The speed helps but the current angle was worse than you read. You make it through — barely — with a scrape along the port side.",
+        resourceDelta: { equipment: -8 },
+      },
+
+  ngo_observe: () => ({
+    text: "The interview ends. The team thanks the woman and packs up with efficiency. She watches them go with an expression you've seen before — the polite face worn while waiting for outsiders to finish.",
+    resourceDelta: {},
+  }),
+
+  ngo_engage: () => ({
+    text: "'We're documenting traditional fishing territories,' the team leader says. 'To support land rights claims.' It's good work, probably. But the woman on the porch is watching the conversation about her land happen between two people who aren't her.",
+    resourceDelta: { morale: -5 },
+  }),
+
+  ngo_speak_elder: (success) => success
+    ? {
+        text: "She offers you coffee and talks for an hour. She knows the upper river better than any map. She describes the silence that has settled into it — not emptiness, she says, but wrongness. Like a held breath. She gives you a hand-drawn route note.",
+        resourceDelta: { morale: 10, fuel: 5 },
+      }
+    : {
+        text: "She's polite but closed. Too many strangers this season asking questions. You leave knowing only that the wariness itself tells you something.",
+        resourceDelta: {},
+      },
 };
 
 function defaultOutcome(success: boolean): EncounterOutcome {

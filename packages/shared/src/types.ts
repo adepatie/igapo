@@ -12,6 +12,7 @@ export interface Resources {
 
 export type Season = "wet" | "dry";
 export type TimeOfDay = "dawn" | "morning" | "afternoon" | "dusk" | "night";
+export type Weather = "clear" | "cloudy" | "storm_approaching" | "storm";
 
 // ── River Map ──────────────────────────────────────────────────────────────
 
@@ -25,6 +26,17 @@ export type NodeType =
 
 export type Region = "várzea" | "igapó" | "terra_firme";
 
+export interface EncounterPoolEntry {
+  encounterId: string;
+  conditions?: {
+    timeOfDay?: TimeOfDay[];   // only available at these times
+    season?: Season[];         // only available in these seasons
+    weather?: Weather[];       // only available in this weather
+    minRun?: number;           // only after N total runs (meta-unlock)
+  };
+  weight?: number;             // relative probability (default 1)
+}
+
 export interface RiverNode {
   id: string;
   name: string;
@@ -32,7 +44,9 @@ export interface RiverNode {
   region: Region;
   x: number;
   y: number;
-  encounterId: string;
+  encounterId: string;                // primary / fallback
+  encounterPool?: EncounterPoolEntry[]; // time/season/weather variants
+  hint?: string;                      // partial info visible before visit
 }
 
 export interface RiverEdge {

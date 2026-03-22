@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { RiverNode, RiverEdge } from "@igapo/shared";
 import { GameState } from "./GameState";
 import { generateRun } from "../data/mapGenerator";
-import { ENCOUNTERS } from "../data/encounterData";
+import { selectEncounter } from "../data/encounterSelector";
 
 const NODE_RADIUS = 13;
 
@@ -31,6 +31,7 @@ export class RiverMap {
   private nodes: RiverNode[];
   private edges: RiverEdge[];
   private rootContainer!: Phaser.GameObjects.Container;
+  private tooltip!: Phaser.GameObjects.Container;
 
   constructor(scene: Phaser.Scene, state: GameState) {
     this.scene = scene;
@@ -44,6 +45,7 @@ export class RiverMap {
   create() {
     this.rootContainer = this.scene.add.container(0, 0);
     this.drawBackground();
+    this.drawWeatherOverlay();
     this.drawRiver();
     this.drawEdges();
     this.drawNodes();
@@ -65,7 +67,7 @@ export class RiverMap {
 
     onMoved?.(node.id);
 
-    const encounter = ENCOUNTERS[node.encounterId];
+    const encounter = selectEncounter(node, this.state);
     if (encounter) {
       this.scene.scene.launch("EncounterScene", { node: encounter, state: this.state });
       this.scene.scene.pause("MapScene");
@@ -73,6 +75,99 @@ export class RiverMap {
   }
 
   update(_time: number, _delta: number) {}
+
+  // ── Weather overlay ───────────────────────────────────────────────────────
+
+  private drawWeatherOverlay() {
+    const { width, height } = this.scene.scale;
+    const w = this.state.weather;
+    if (w === "clear") return;
+
+    const g = this.scene.add.graphics();
+
+    if (w === "cloudy") {
+      g.fillStyle(0x0a0e14, 0.18);
+      g.fillRect(0, 0, width, height);
+    } else if (w === "storm_approaching") {
+      g.fillStyle(0x050810, 0.35);
+      g.fillRect(0, 0, width, height);
+      // Dark cloud mass on horizon (top-right)
+      g.fillStyle(0x020406, 0.5);
+      g.fillRect(width * 0.55, 0, width * 0.45, height * 0.3);
+      // Warning text
+      const warn = this.scene.add.text(width - 16, 16, "⚡ Storm Approaching", {
+        fontSize: "11px", color: "#e8a020", fontFamily: "Georgia, serif", fontStyle: "italic",
+      }).setOrigin(1, 0).setAlpha(0.85);
+      this.rootContainer.add(warn);
+    } else if (w === "storm") {
+      g.fillStyle(0x020406, 0.55);
+      g.fillRect(0, 0, width, height);
+      // Rain streaks
+      g.lineStyle(1, 0x1a2a3a, 0.4);
+      for (let i = 0; i < 40; i++) {
+        const rx = Math.random() * width;
+        const ry = Math.random() * height;
+        g.beginPath(); g.moveTo(rx, ry); g.lineTo(rx + 8, ry + 20); g.strokePath();
+      }
+      const warn = this.scene.add.text(width / 2, 20, "STORM — Navigation Risk Elevated", {
+        fontSize: "12px", color: "#c84040", fontFamily: "Georgia, serif", letterSpacing: 3,
+      }).setOrigin(0.5, 0).setAlpha(0.9);
+      this.rootContainer.add(warn);
+    }
+
+    this.rootContainer.add(g);
+  }
+
+  // ── Hover tooltip ─────────────────────────────────────────────────────────
+
+  private showTooltip(node: RiverNode, x: number, y: number) {
+    this.hideTooltip();
+    const { width } = this.scene.scale;
+
+    const lines: string[] = [node.name];
+    if (node.hint) lines.push(node.hint);
+
+    // Time-gated hint
+    const poolTimes = node.encounterPool?.flatMap(e => e.conditions?.timeOfDay ?? []);
+    if (poolTimes && poolTimes.length > 0) {
+      const unique = [...new Set(poolTimes)];
+      lines.push(`Active: ${unique.join(", ")}`);
+    }
+
+    const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1);
+    lines.push(`${typeLabel}  ·  ${node.region}`);
+
+    const tipW = 220;
+    const tipH = lines.length * 16 + 16;
+    let tx = x + 18;
+    if (tx + tipW > width - 10) tx = x - tipW - 12;
+
+    this.tooltip = this.scene.add.container(tx, y - tipH / 2);
+    this.tooltip.setDepth(200);
+
+    const bg = this.scene.add.rectangle(tipW / 2, tipH / 2, tipW, tipH, 0x0a0705, 0.92)
+      .setStrokeStyle(1, 0x3d2e0a);
+    this.tooltip.add(bg);
+
+    lines.forEach((line, i) => {
+      const isTitle = i === 0;
+      const isType = i === lines.length - 1;
+      const t = this.scene.add.text(10, 8 + i * 16, line, {
+        fontSize: isTitle ? "12px" : "10px",
+        color: isTitle ? "#f5c842" : isType ? "#5a4a2a" : "#a09070",
+        fontFamily: "Georgia, serif",
+        fontStyle: isTitle ? "italic" : "normal",
+        wordWrap: { width: tipW - 20 },
+      }).setOrigin(0, 0);
+      this.tooltip.add(t);
+    });
+  }
+
+  private hideTooltip() {
+    if (this.tooltip) {
+      this.tooltip.destroy();
+    }
+  }
 
   private revealNeighbors(nodeId: string) {
     for (const edge of this.edges) {
@@ -341,18 +436,21 @@ export class RiverMap {
         this.rootContainer.add(tick);
       }
 
-      // Interactive hit area
+      // Interactive hit area + tooltip
       const hitZone = this.scene.add.circle(node.x, node.y, NODE_RADIUS + 8, 0xffffff, 0)
         .setInteractive({ useHandCursor: true });
-      hitZone.on("pointerover", () => {
-        if (node.id !== this.state.currentNodeId) {
-          label.setColor("#ffffff");
-          icon.setAlpha(1);
-        }
+      hitZone.on("pointerover", (ptr: Phaser.Input.Pointer) => {
+        if (node.id !== this.state.currentNodeId) label.setColor("#ffffff");
+        icon.setAlpha(1);
+        this.showTooltip(node, ptr.x, ptr.y);
+      });
+      hitZone.on("pointermove", (ptr: Phaser.Input.Pointer) => {
+        this.showTooltip(node, ptr.x, ptr.y);
       });
       hitZone.on("pointerout", () => {
         label.setColor(isCurrent ? "#f5c842" : "#c8b87a");
         icon.setAlpha(alpha);
+        this.hideTooltip();
       });
       this.rootContainer.add(hitZone);
     }

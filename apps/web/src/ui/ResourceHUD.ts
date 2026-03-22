@@ -22,6 +22,7 @@ export class ResourceHUD {
   private bars: Map<string, Phaser.GameObjects.Rectangle> = new Map();
   private timeText!: Phaser.GameObjects.Text;
   private dayText!: Phaser.GameObjects.Text;
+  private weatherText!: Phaser.GameObjects.Text;
   private crewLabels: Phaser.GameObjects.Text[] = [];
   private journalBtn!: Phaser.GameObjects.Text;
   private noteCount!: Phaser.GameObjects.Text;
@@ -66,6 +67,10 @@ export class ResourceHUD {
 
     this.scene.add.text(width - 14, 50, `Season: ${this.state.season}`, {
       fontSize: "10px", color: "#6b5a34", fontFamily: "Georgia, serif",
+    }).setOrigin(1, 0);
+
+    this.weatherText = this.scene.add.text(width - 14, 66, "", {
+      fontSize: "10px", color: "#e8a020", fontFamily: "Georgia, serif", fontStyle: "italic",
     }).setOrigin(1, 0);
 
     // ── Crew panel (bottom left) ─────────────────────────────────────────
@@ -124,5 +129,14 @@ export class ResourceHUD {
     const n = this.state.fieldNotes.length;
     this.noteCount.setText(n > 0 ? `${n} note${n !== 1 ? "s" : ""}` : "");
     this.journalBtn.setColor(n > 0 ? "#a09070" : "#6b5a34");
+
+    const weatherLabel: Record<string, string> = {
+      clear: "", cloudy: "Cloudy", storm_approaching: "⚡ Storm approaching", storm: "⛈ Storm",
+    };
+    const weatherColor: Record<string, string> = {
+      cloudy: "#6b7a8a", storm_approaching: "#e8a020", storm: "#c84040",
+    };
+    this.weatherText.setText(weatherLabel[this.state.weather] ?? "");
+    this.weatherText.setColor(weatherColor[this.state.weather] ?? "#e8a020");
   }
 }
