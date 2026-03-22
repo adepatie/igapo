@@ -6,13 +6,14 @@ import { MapScene } from "./scenes/MapScene";
 import { EncounterScene } from "./scenes/EncounterScene";
 import { UIScene } from "./scenes/UIScene";
 import { RunEndScene } from "./scenes/RunEndScene";
+import { CodexScene } from "./scenes/CodexScene";
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
   width: 1280,
   height: 720,
   backgroundColor: "#0d0a06",
-  scene: [BootScene, TitleScene, ArchetypeScene, MapScene, EncounterScene, UIScene, RunEndScene],
+  scene: [BootScene, TitleScene, ArchetypeScene, MapScene, EncounterScene, UIScene, RunEndScene, CodexScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

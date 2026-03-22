@@ -69,6 +69,18 @@ export class TitleScene extends Phaser.Scene {
     beginBtn.on("pointerout", () => beginBtn.setColor("#a8c89a"));
     beginBtn.on("pointerdown", () => this.scene.start("ArchetypeScene"));
 
+    // Codex button (only shown to returning players)
+    const codexCheck = Codex.load();
+    if (codexCheck.totalRuns > 0) {
+      const codexBtn = this.add.text(cx, height * 0.78, "Open Field Codex →", {
+        fontSize: "14px", color: "#6b5a34", fontFamily: "Georgia, serif", fontStyle: "italic",
+      }).setOrigin(0.5)
+        .setInteractive({ useHandCursor: true })
+        .on("pointerover", () => codexBtn.setColor("#c8b080"))
+        .on("pointerout", () => codexBtn.setColor("#6b5a34"))
+        .on("pointerdown", () => this.scene.start("CodexScene"));
+    }
+
     // Version
     this.add.text(width - 12, height - 12, "v0.1 — Prototype", {
       fontSize: "10px",

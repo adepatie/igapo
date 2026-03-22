@@ -3,6 +3,7 @@ import type { RiverNode, RiverEdge } from "@igapo/shared";
 import { GameState } from "./GameState";
 import { generateRun } from "../data/mapGenerator";
 import { selectEncounter } from "../data/encounterSelector";
+import { computeBonuses } from "./BonusSystem";
 
 const NODE_RADIUS = 13;
 
@@ -39,12 +40,15 @@ export class RiverMap {
     const run = generateRun();
     this.nodes = run.nodes;
     this.edges = run.edges;
-    this.revealNeighbors(state.currentNodeId);
+    const bonuses = computeBonuses(state);
+    // Reveal starting neighbors at configured depth
+    this.revealNeighbors(state.currentNodeId, bonuses.extraRevealDepth);
   }
 
   create() {
     this.rootContainer = this.scene.add.container(0, 0);
     this.drawBackground();
+    this.drawTimeOfDayAtmosphere();
     this.drawWeatherOverlay();
     this.drawRiver();
     this.drawEdges();
@@ -62,7 +66,8 @@ export class RiverMap {
     this.state.visitNode(node.id);
     this.state.advanceTime();
     this.state.drainResources({ fuel: 10, food: 5 });
-    this.revealNeighbors(node.id);
+    const bonuses = computeBonuses(this.state);
+    this.revealNeighbors(node.id, bonuses.extraRevealDepth);
     this.refresh();
 
     onMoved?.(node.id);
@@ -169,10 +174,26 @@ export class RiverMap {
     }
   }
 
-  private revealNeighbors(nodeId: string) {
-    for (const edge of this.edges) {
-      if (edge.from === nodeId) this.state.revealNode(edge.to);
-      if (edge.to === nodeId) this.state.revealNode(edge.from);
+  private revealNeighbors(nodeId: string, depth: number = 1) {
+    const visited = new Set<string>([nodeId]);
+    let frontier = [nodeId];
+    for (let d = 0; d < depth; d++) {
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const edge of this.edges) {
+          if (edge.from === id && !visited.has(edge.to)) {
+            this.state.revealNode(edge.to);
+            visited.add(edge.to);
+            next.push(edge.to);
+          }
+          if (edge.to === id && !visited.has(edge.from)) {
+            this.state.revealNode(edge.from);
+            visited.add(edge.from);
+            next.push(edge.from);
+          }
+        }
+      }
+      frontier = next;
     }
   }
 
@@ -194,10 +215,80 @@ export class RiverMap {
     this.rootContainer.destroy();
     this.rootContainer = this.scene.add.container(0, 0);
     this.drawBackground();
+    this.drawTimeOfDayAtmosphere();
+    this.drawWeatherOverlay();
     this.drawRiver();
     this.drawEdges();
     this.drawNodes();
     this.drawLegend();
+  }
+
+  // ── Time-of-day atmosphere ────────────────────────────────────────────────
+
+  private drawTimeOfDayAtmosphere() {
+    const { width, height } = this.scene.scale;
+    const g = this.scene.add.graphics();
+
+    // Color and intensity per time of day
+    const overlays: Record<string, [number, number]> = {
+      // [hex color, alpha]
+      dawn:      [0x3d1e00, 0.22],   // warm burnt orange bleed
+      morning:   [0x0d1a0a, 0.08],   // nearly clear, slight cool green
+      afternoon: [0x0a0d06, 0.0],    // neutral
+      dusk:      [0x3d1500, 0.30],   // deep amber-red
+      night:     [0x000814, 0.55],   // near-monochrome blue-black
+    };
+
+    const [color, alpha] = overlays[this.state.timeOfDay] ?? [0x000000, 0];
+    if (alpha > 0) {
+      g.fillStyle(color, alpha);
+      g.fillRect(0, 0, width, height);
+    }
+
+    // Dawn/dusk: horizon glow from east (right side)
+    if (this.state.timeOfDay === "dawn" || this.state.timeOfDay === "dusk") {
+      const glow = this.state.timeOfDay === "dawn" ? 0xff8c20 : 0xff4a00;
+      g.fillStyle(glow, 0.06);
+      g.fillRect(width * 0.6, 0, width * 0.4, height);
+      g.fillStyle(glow, 0.04);
+      g.fillRect(width * 0.75, 0, width * 0.25, height);
+    }
+
+    // Night: stars (random dots, seeded by day number for consistency)
+    if (this.state.timeOfDay === "night") {
+      const rng = (seed: number) => {
+        const x = Math.sin(seed) * 10000;
+        return x - Math.floor(x);
+      };
+      g.fillStyle(0xd4c9a0, 0.7);
+      for (let i = 0; i < 60; i++) {
+        const sx = rng(this.state.dayNumber * 100 + i * 7.3) * width;
+        const sy = rng(this.state.dayNumber * 100 + i * 13.7) * height * 0.45;
+        g.fillRect(sx, sy, 1, 1);
+      }
+    }
+
+    this.rootContainer.add(g);
+
+    // Time label (top center, subtle)
+    const timeLabels: Record<string, string> = {
+      dawn: "Dawn", morning: "Morning", afternoon: "Afternoon", dusk: "Dusk", night: "Night",
+    };
+    const timeColors: Record<string, string> = {
+      dawn: "#c87820", morning: "#6a8a52", afternoon: "#5a6a4a", dusk: "#c85020", night: "#3a4a6a",
+    };
+    const todLabel = this.scene.add.text(
+      this.scene.scale.width / 2, 48,
+      timeLabels[this.state.timeOfDay] ?? "",
+      {
+        fontSize: "10px",
+        color: timeColors[this.state.timeOfDay] ?? "#5a4a2a",
+        fontFamily: "Georgia, serif",
+        fontStyle: "italic",
+        letterSpacing: 4,
+      }
+    ).setOrigin(0.5).setAlpha(0.7);
+    this.rootContainer.add(todLabel);
   }
 
   // ── Background ────────────────────────────────────────────────────────────
