@@ -234,6 +234,9 @@ export class EncounterEngine {
     this.choiceButtons.forEach((b) => b.destroy());
     this.choiceButtons = [];
 
+    // Track choice in codexEntries for meta-fragment triggers
+    this.state.codexEntries.add(choice.id);
+
     // Apply archetype/crew success bonus
     const adjustedChance = applySuccessBonus(
       choice.successChance ?? 1.0,

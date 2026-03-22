@@ -14,6 +14,20 @@ const RESOURCE_LABELS: [string, string][] = [
   ["morale", "Morale"],
 ];
 
+const MECHANIC_NAMES: Record<string, string> = {
+  naturalist:   "Specimen Journal",
+  correspondent: "Source Network",
+  river_guide:  "Navigator's Eye",
+  medic:        "Clinic Reputation",
+};
+
+const MECHANIC_DESC: Record<string, string> = {
+  naturalist:   "Every 3 wildlife specimens trigger grant funding (+resources).",
+  correspondent: "Human encounters generate radio intelligence on nearby nodes.",
+  river_guide:  "Fog of war lifts two nodes deep instead of one.",
+  medic:        "Offer clinics at settlements — communities remember you.",
+};
+
 export class ArchetypeScene extends Phaser.Scene {
   private selectedId: string | null = null;
   private cards: Map<string, Phaser.GameObjects.Container> = new Map();
@@ -115,9 +129,31 @@ export class ArchetypeScene extends Phaser.Scene {
       container.add(barFill);
     });
 
+    // Unique mechanic label
+    const mechName = MECHANIC_NAMES[arch.id];
+    if (mechName) {
+      const mechLabel = this.add.text(0, CARD_H / 2 - 52, mechName, {
+        fontSize: "10px",
+        color: "#c8a84a",
+        fontFamily: "Georgia, serif",
+        letterSpacing: 1,
+      }).setOrigin(0.5, 1);
+      container.add(mechLabel);
+
+      const mechDesc = this.add.text(0, CARD_H / 2 - 38, MECHANIC_DESC[arch.id] ?? "", {
+        fontSize: "9px",
+        color: "#6b5a34",
+        fontFamily: "Georgia, serif",
+        fontStyle: "italic",
+        wordWrap: { width: CARD_W - 24 },
+        align: "center",
+      }).setOrigin(0.5, 1);
+      container.add(mechDesc);
+    }
+
     // Bonus note
     if (arch.bonusFieldNoteIds.length > 0) {
-      const bonus = this.add.text(0, CARD_H / 2 - 20, "✦ Starts with a Field Note", {
+      const bonus = this.add.text(0, CARD_H / 2 - 8, "✦ Starts with a Field Note", {
         fontSize: "10px",
         color: "#f5c842",
         fontFamily: "Georgia, serif",

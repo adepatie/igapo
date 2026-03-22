@@ -3,22 +3,30 @@ import { GameState } from "./GameState";
 
 const STORAGE_KEY = "varzea_codex_v1";
 
-// Meta-narrative fragments surfaced across runs
+// Meta-narrative fragments triggered by specific encounter choice IDs
+// These are choice IDs (tracked in state.codexEntries), not node IDs
 const META_FRAGMENT_TRIGGERS: Record<string, string> = {
-  ask_river: "fragment_1",          // traders mention boats not returning
+  ask_river:          "fragment_1", // trader mentions boats not returning
   accept_hospitality: "fragment_2", // elder describes migration change
-  ask_research: "fragment_3",       // researcher's sensor buoys gone silent
-  ask_quiet_zones: "fragment_4",    // the "quiet zones" named explicitly
-  enter_facility: "fragment_5",     // Dr. Carvalho's unfinished journal entry
+  ask_research:       "fragment_3", // researcher's sensor buoys gone silent
+  ask_quiet_zones:    "fragment_4", // the "quiet zones" named explicitly
+  enter_facility:     "fragment_5", // Dr. Carvalho's unfinished journal entry
 };
 
 export interface CodexData {
-  allNoteIds: string[];            // all field notes ever gained across runs
+  allNoteIds: string[];
   totalNotes: number;
   visitedNodeIds: string[];
-  metaFragments: string[];         // fragment IDs discovered
+  metaFragments: string[];
   totalRuns: number;
   destinationReached: boolean;
+
+  // Archetype mechanic career stats
+  naturalistSpecimenBest: number;     // highest single-run specimen count
+  naturalistGrantsTotal: number;      // total grants received across all runs
+  medicClinicRunsTotal: number;       // total clinic encounters run across all runs
+  medicHealedCommunities: string[];   // unique community node IDs healed (cross-run)
+  correspondentTipsTotal: number;     // total radio tips generated across all runs
 }
 
 function empty(): CodexData {
@@ -29,6 +37,11 @@ function empty(): CodexData {
     metaFragments: [],
     totalRuns: 0,
     destinationReached: false,
+    naturalistSpecimenBest: 0,
+    naturalistGrantsTotal: 0,
+    medicClinicRunsTotal: 0,
+    medicHealedCommunities: [],
+    correspondentTipsTotal: 0,
   };
 }
 
@@ -72,20 +85,39 @@ export const Codex = {
     }
 
     // Surface meta fragments based on choices made this run
-    // (We track which encounter IDs were visited — fragments fire on specific encounters)
-    for (const nodeId of state.visitedNodeIds) {
-      const fragment = META_FRAGMENT_TRIGGERS[nodeId];
+    // state.codexEntries tracks encounter choice IDs resolved this run
+    for (const choiceId of state.codexEntries) {
+      const fragment = META_FRAGMENT_TRIGGERS[choiceId];
       if (fragment && !codex.metaFragments.includes(fragment)) {
         codex.metaFragments.push(fragment);
       }
+    }
+
+    // ── Archetype mechanic career stats ──────────────────────────────────
+    if (state.archetypeId === "naturalist") {
+      if (state.specimenCount > codex.naturalistSpecimenBest) {
+        codex.naturalistSpecimenBest = state.specimenCount;
+      }
+      codex.naturalistGrantsTotal += state.specimenGrantLevel;
+    }
+
+    if (state.archetypeId === "medic") {
+      codex.medicClinicRunsTotal += state.healedCommunities.size;
+      for (const communityId of state.healedCommunities) {
+        if (!codex.medicHealedCommunities.includes(communityId)) {
+          codex.medicHealedCommunities.push(communityId);
+        }
+      }
+    }
+
+    if (state.archetypeId === "correspondent") {
+      codex.correspondentTipsTotal += state.radioTips.length;
     }
 
     this.save(codex);
   },
 
   getNotesSummary(): { id: string; species: string }[] {
-    // Returns stub summaries of all ever-unlocked notes
-    // Full text lives in encounterData; this is just the persistent record
     const codex = this.load();
     return codex.allNoteIds.map((id) => ({ id, species: id.replace(/_/g, " ") }));
   },
@@ -94,3 +126,6 @@ export const Codex = {
     localStorage.removeItem(STORAGE_KEY);
   },
 };
+
+// Re-export FieldNote to satisfy any callers that import it from here
+export type { FieldNote };
