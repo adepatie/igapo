@@ -64,6 +64,11 @@ export function generateRun(): RunMap {
       x: 480, y: 530,
       encounterId: "human_extractivist",
       hint: "Engine sounds from the tree line. Uncertain reception.",
+      encounterPool: [
+        { encounterId: "human_extractivist", weight: 3 },
+        { encounterId: "human_extractivist_storm", conditions: { weather: ["storm", "storm_approaching"] }, weight: 4 },
+        { encounterId: "human_extractivist_dry", conditions: { season: ["dry"] }, weight: 2 },
+      ],
     },
     {
       id: "trader_dock",
@@ -73,6 +78,11 @@ export function generateRun(): RunMap {
       x: 580, y: 430,
       encounterId: "human_trader",
       hint: "A laden boat moored mid-route. Supplies for sale.",
+      encounterPool: [
+        { encounterId: "human_trader", weight: 3 },
+        { encounterId: "human_trader_night", conditions: { timeOfDay: ["night", "dusk"] }, weight: 3 },
+        { encounterId: "human_trader_dry", conditions: { season: ["dry"] }, weight: 2 },
+      ],
     },
     {
       id: "harpy_territory",
@@ -96,6 +106,11 @@ export function generateRun(): RunMap {
       x: 700, y: 390,
       encounterId: "human_researcher",
       hint: "Scientific equipment visible. Someone is documenting something.",
+      encounterPool: [
+        { encounterId: "human_researcher", weight: 3 },
+        { encounterId: "human_researcher_dry", conditions: { season: ["dry"] }, weight: 3 },
+        { encounterId: "human_researcher_night", conditions: { timeOfDay: ["night", "dusk"] }, weight: 2 },
+      ],
     },
     {
       id: "blackwater_tributary",

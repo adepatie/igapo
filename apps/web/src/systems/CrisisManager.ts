@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { GameState } from "./GameState";
 
-type CrisisType = "fuel" | "food" | "morale" | "equipment";
+type CrisisType = "fuel" | "food" | "morale" | "equipment" | "equipment_total";
 
 interface CrisisEvent {
   type: CrisisType;
@@ -11,6 +11,12 @@ interface CrisisEvent {
 }
 
 const CRISES: Record<CrisisType, CrisisEvent> = {
+  equipment_total: {
+    type: "equipment_total",
+    title: "The Boat is Dead",
+    text: "The hull is taking water. The engine won't start. The radio is gone. You are in the middle of the várzea with a boat that is no longer a boat. The expedition ends here — you are lucky it ends only here.",
+    effect: () => {},
+  },
   fuel: {
     type: "fuel",
     title: "Engine Stalled",
@@ -68,6 +74,11 @@ export class CrisisManager {
     if (morale <= 0 && !this.triggeredCrises.has("morale")) {
       this.triggeredCrises.add("morale");
       this.showCrisis("morale", () => onRunEnd("morale"));
+      return true;
+    }
+    if (equipment <= 0 && !this.triggeredCrises.has("equipment_total")) {
+      this.triggeredCrises.add("equipment_total");
+      this.showCrisis("equipment_total", () => onRunEnd("equipment"));
       return true;
     }
 

@@ -467,6 +467,81 @@ export const ENCOUNTERS: Record<string, EncounterNode> = {
     ],
   },
 
+  // ── Season / weather variants ──────────────────────────────────────────────
+
+  human_extractivist_storm: {
+    id: "human_extractivist_storm",
+    title: "Shelter",
+    type: "human",
+    arrivalText:
+      "The storm has driven everyone inside. You find the logging camp crowded under a tarp — four men, chainsaws stacked under shelter, the smell of wet wood and cigarettes. The youngest one looks relieved to see a boat. 'We've been waiting for it to pass. You have fuel?'",
+    choices: [
+      { id: "storm_share_fuel", label: "Share your fuel in exchange for information about the upper river.", successChance: 1.0 },
+      { id: "storm_shelter_only", label: "Take shelter and wait out the storm. Nothing more.", successChance: 1.0 },
+    ],
+  },
+
+  human_extractivist_dry: {
+    id: "human_extractivist_dry",
+    title: "The Camp in Dry Season",
+    type: "human",
+    arrivalText:
+      "The dry season has exposed the forest floor. Log roads that were underwater months ago are now traversable. The camp is larger than it looked in high water — more men, more equipment, a second chainsaw crew finishing a run close to the river. The young man with the prepared explanation is still here.",
+    choices: [
+      { id: "dry_no_judgment", label: "Say nothing about the operation. Ask to buy fuel.", successChance: 1.0 },
+      { id: "dry_document", label: "Make discreet notes about the extent of the operation.", successChance: 0.7 },
+    ],
+  },
+
+  human_trader_night: {
+    id: "human_trader_night",
+    title: "The Boat at Night",
+    type: "human",
+    arrivalText:
+      "The trading boat is lit by a single kerosene lamp. The operator hears your engine and appears in the stern with a flashlight. After a moment, he sets it down. 'You're out late. So am I.' He has supplies — you can see them in the lamplight — and something else: the look of someone who has been waiting for a different boat.",
+    choices: [
+      { id: "night_trade", label: "Trade for what you need. Don't ask about the other boat.", successChance: 1.0 },
+      { id: "night_ask", label: "Ask about the boat he was expecting.", successChance: 0.55 },
+    ],
+  },
+
+  human_trader_dry: {
+    id: "human_trader_dry",
+    title: "Low Water Market",
+    type: "human",
+    arrivalText:
+      "The dry season has exposed sandbanks on both sides of the channel. The trader's boat sits lower — less stock, harder run upriver. He looks thinner. 'Prices are different in dry season,' he says, before you've asked. 'Everything costs more to move.'",
+    choices: [
+      { id: "dry_trade_accept", label: "Accept the dry-season prices. You need supplies.", successChance: 1.0 },
+      { id: "dry_trade_refuse", label: "Push back on the markup. The river is the same.", successChance: 0.45 },
+      { id: "dry_trade_barter", label: "Offer equipment rather than trying to argue about currency.", successChance: 0.9 },
+    ],
+  },
+
+  human_researcher_dry: {
+    id: "human_researcher_dry",
+    title: "Dr. Ferreira — Dry Season",
+    type: "human",
+    arrivalText:
+      "The camp looks different in dry season — the water has dropped two meters, exposing a mudflat that wasn't here in the wet. Dr. Ferreira is standing at the water's edge looking at something in the exposed sediment. She doesn't look up when you arrive. 'The low-water channel runs thirty meters east of where it was last year,' she says. 'That doesn't happen.'",
+    choices: [
+      { id: "dry_ask_channel", label: "Ask what a shifted channel means.", successChance: 1.0 },
+      { id: "dry_ask_silence", label: "Ask if the silence zones have changed with the water level.", requiresFieldNote: "boto_navigation", successChance: 1.0 },
+    ],
+  },
+
+  human_researcher_night: {
+    id: "human_researcher_night",
+    title: "Lamplight and Data",
+    type: "human",
+    arrivalText:
+      "The camp is quiet at night except for a generator and Dr. Ferreira at her laptop, going through acoustic data. She waves you toward the camp table without looking up. On the screen: a spectrogram — time on one axis, frequency on the other. The right side is almost entirely blank. 'That used to be full,' she says.",
+    choices: [
+      { id: "night_ask_data", label: "Ask her to explain the spectrogram.", successChance: 1.0 },
+      { id: "night_ask_origin", label: "Ask when the silence started.", successChance: 1.0 },
+    ],
+  },
+
   human_ngo: {
     id: "human_ngo",
     title: "The Conservation Team",
@@ -901,6 +976,88 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
         text: "The speed helps but the current angle was worse than you read. You make it through — barely — with a scrape along the port side.",
         resourceDelta: { equipment: -8 },
       },
+
+  // ── Season / weather variant outcomes ──────────────────────────────────────
+
+  storm_share_fuel: () => ({
+    text: "'We appreciate it.' He tells you something in exchange — a route that avoids the upper bank during the storm, used by the logging trucks. It costs you fuel, but you leave knowing the river's behavior in this weather a little better.",
+    resourceDelta: { fuel: -15, morale: 8 },
+  }),
+
+  storm_shelter_only: () => ({
+    text: "You wait in silence while the rain hammers the tarp. No one talks much. When the storm breaks, you leave having said almost nothing. But you sheltered, and the boat is intact.",
+    resourceDelta: { food: -8 },
+  }),
+
+  dry_no_judgment: () => ({
+    text: "'Fair enough,' he says. He fills your tank without ceremony. As you're leaving he adds, without being asked: 'Don't go past the falls right now. Water's too low. Anyone who went up there recently came back looking wrong.' He doesn't elaborate.",
+    resourceDelta: { fuel: 20 },
+  }),
+
+  dry_document: (success) => success
+    ? {
+        text: "You note the extent of the operation — the roads, the cleared hectares, the zone numbers visible on a map posted to a tree. This information will be useful to someone. The young man watches you but says nothing.",
+        resourceDelta: { morale: -5 },
+      }
+    : {
+        text: "You're not subtle enough. One of the older men puts himself between you and the operation map. 'You a journalist?' The conversation ends. You leave without what you came for.",
+        resourceDelta: { morale: -10 },
+      },
+
+  night_trade: () => ({
+    text: "He sells you what you need at fair prices, by lamplight. The transaction is quiet and professional. Whatever boat he was waiting for, he doesn't bring it up. Neither do you.",
+    resourceDelta: { medicine: 15, food: 12 },
+  }),
+
+  night_ask: (success) => success
+    ? {
+        text: "'A researcher's boat. She went upriver six weeks ago. She hasn't come back.' He says it the way people say things they've decided to stop worrying about. 'Not my concern anymore.' He charges you nothing for the information.",
+        resourceDelta: { morale: -5 },
+      }
+    : {
+        text: "His expression closes. 'Just a regular trade run.' He finishes the transaction and goes back inside. Whatever you almost learned stays with the river.",
+        resourceDelta: {},
+      },
+
+  dry_trade_accept: () => ({
+    text: "You pay the dry-season price and leave with what you need. He's right — everything costs more to move when the channel is half sand. You don't blame him for it.",
+    resourceDelta: { medicine: 18, food: 10 },
+  }),
+
+  dry_trade_refuse: (success) => success
+    ? {
+        text: "He shrugs, unexpectedly. 'Fine. My price was high anyway.' You get a fair deal — and a piece of information about a low-water shortcut through the next bend.",
+        resourceDelta: { medicine: 12, food: 8, fuel: 5 },
+      }
+    : {
+        text: "He doesn't budge. 'You can wait for the rains.' You leave with nothing. The dry season is not on your side.",
+        resourceDelta: { morale: -8 },
+      },
+
+  dry_trade_barter: () => ({
+    text: "He looks at your spare equipment with genuine interest. 'Deal.' A worn hand-pump and a spare prop shaft buy you more than cash would have. Equipment trades well when roads are dust.",
+    resourceDelta: { medicine: 22, food: 15, equipment: -12 },
+  }),
+
+  dry_ask_channel: () => ({
+    text: "'It means the bottom substrate is moving,' she says, still looking at the sediment. 'Not seasonally — permanently. Something is changing the river's course at the upper watershed. That takes force. Or absence of force. I don't know which is worse.'",
+    resourceDelta: { morale: -5 },
+  }),
+
+  dry_ask_silence: () => ({
+    text: "She finally looks at you. 'In the wet season the zones were a fixed area. I could map them. In the dry season they're larger. As if the water was containing them.' She walks back to camp without finishing the thought.",
+    resourceDelta: { morale: -8 },
+  }),
+
+  night_ask_data: () => ({
+    text: "'Frequency range 200-8000Hz — that's the acoustic signature of a healthy river. Fish, frogs, insects, birds at the surface. This recording is from fourteen months ago.' She points to the blank section. 'This is from last month. Same location, same time of day, same equipment.' She closes the laptop. 'I don't show people this usually.'",
+    resourceDelta: { morale: -10 },
+  }),
+
+  night_ask_origin: () => ({
+    text: "'Eighteen months ago, the first anomaly. Fourteen months ago, the first three complete silences. It's been spreading since then.' She refills her coffee. 'The unusual thing isn't the rate. The unusual thing is the shape. It's moving like a biological boundary. Like something is advancing.'",
+    resourceDelta: { morale: -12 },
+  }),
 
   ngo_observe: () => ({
     text: "The interview ends. The team thanks the woman and packs up with efficiency. She watches them go with an expression you've seen before — the polite face worn while waiting for outsiders to finish.",

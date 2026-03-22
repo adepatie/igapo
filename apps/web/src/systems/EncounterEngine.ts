@@ -213,7 +213,9 @@ export class EncounterEngine {
     const filteredInjected = injected.filter(c => !existingIds.has(c.id));
 
     const allChoices = [...available, ...filteredInjected];
-    const startY = panelH / 2 - 175;
+    // Adjust startY upward if many choices to prevent overflow
+    const choiceAreaH = allChoices.length * 40 + locked.slice(0, 1).length * 38;
+    const startY = Math.min(panelH / 2 - 175, panelH / 2 - choiceAreaH - 20);
 
     allChoices.forEach((choice, i) => {
       const isBonus = filteredInjected.includes(choice);

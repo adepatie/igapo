@@ -54,6 +54,7 @@ export class RunEndScene extends Phaser.Scene {
       fuel: "The engine died somewhere no one comes. The expedition ends here.",
       food: "The crew could not continue. The river asks more than you had.",
       morale: "The crew dispersed at the last stop. Some expeditions end before they end.",
+      equipment: "The boat was no longer a boat. The expedition ends here — you are lucky it ends only here.",
     }[this.reason] ?? "";
 
     this.add.text(cx, 86, subtitle, {

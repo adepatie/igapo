@@ -225,12 +225,45 @@ export class RiverMap {
     this.rootContainer.destroy();
     this.rootContainer = this.scene.add.container(0, 0);
     this.drawBackground();
+    this.drawSeasonOverlay();
     this.drawTimeOfDayAtmosphere();
     this.drawWeatherOverlay();
     this.drawRiver();
     this.drawEdges();
     this.drawNodes();
     this.drawLegend();
+  }
+
+  // ── Season overlay ────────────────────────────────────────────────────────
+
+  private drawSeasonOverlay() {
+    if (this.state.season !== "dry") return;
+    const { width, height } = this.scene.scale;
+    const g = this.scene.add.graphics();
+
+    // Dry season: warm sienna tint — lower water, sandbanks exposed
+    g.fillStyle(0x3a1a00, 0.12);
+    g.fillRect(0, 0, width, height);
+
+    // Sandbank suggestion — pale strips near the river's lower edge
+    g.fillStyle(0xd4a84a, 0.07);
+    g.fillRect(0, height * 0.55, width, height * 0.15);
+
+    this.rootContainer.add(g);
+
+    // Dry season label
+    const label = this.scene.add.text(
+      this.scene.scale.width / 2, 28,
+      "Dry Season",
+      {
+        fontSize: "9px",
+        color: "#8a5a20",
+        fontFamily: "Georgia, serif",
+        fontStyle: "italic",
+        letterSpacing: 4,
+      }
+    ).setOrigin(0.5).setAlpha(0.65);
+    this.rootContainer.add(label);
   }
 
   // ── Time-of-day atmosphere ────────────────────────────────────────────────

@@ -1,9 +1,11 @@
 import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype } from "@igapo/shared";
 import { FIELD_NOTES_BY_ID } from "../data/encounterData";
+import { Codex } from "./Codex";
 
 export class GameState {
   resources: Resources;
-  season: Season = "wet";
+  // Season is set at run start: alternates wet/dry based on run count, with slight randomness
+  season: Season;
   timeOfDay: TimeOfDay = "dawn";
   weather: Weather = "clear";
   dayNumber: number = 1;
@@ -36,6 +38,10 @@ export class GameState {
 
   constructor(archetype: Archetype) {
     this.archetypeId = archetype.id;
+    // Season alternates: even runs = wet (floods high, dolphins upriver), odd runs = dry (sandbanks, piranhas)
+    // With a small random override so not perfectly predictable
+    const runCount = Codex.load().totalRuns;
+    this.season = (runCount % 2 === 0 || Math.random() < 0.25) ? "wet" : "dry";
     this.resources = {
       fuel: archetype.startingResources.fuel ?? 100,
       food: archetype.startingResources.food ?? 100,
