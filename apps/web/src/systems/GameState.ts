@@ -20,6 +20,17 @@ export class GameState {
   crew: CrewMember[] = [];
   codexEntries: Set<string> = new Set();
 
+  // ── Archetype unique mechanic state ──────────────────────────────────────
+  // Naturalist: Specimen Journal — every 3 wildlife field notes = grant
+  specimenCount: number = 0;
+  specimenGrantLevel: number = 0; // how many grants have already fired
+
+  // Correspondent: Source Network — radio tips stored per node id
+  radioTips: string[] = [];
+
+  // Medic: Clinic Reputation — communities where clinic was run this run
+  healedCommunities: Set<string> = new Set();
+
   constructor(archetype: Archetype) {
     this.archetypeId = archetype.id;
     this.resources = {

@@ -100,7 +100,7 @@ export interface CrewMember {
   id: string;
   name: string;
   role: string;
-  traits: [CrewTrait, CrewTrait];
+  traits: CrewTrait[];
   morale: number; // 0–100, individual
 }
 

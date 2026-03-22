@@ -82,6 +82,20 @@ export function computeBonuses(state: GameState): ActiveBonuses {
         case "anxious_in_storms":
           b.stormMoralePenalty += 10;
           break;
+        case "storm_tested":
+          // replaced anxious_in_storms — no penalty
+          break;
+        case "night_reader":
+          // replaced superstitious — no night igapó penalty (and small bonus)
+          b.nightIgapoPenalty -= 4; // slight buff vs baseline
+          break;
+        case "apex_observer":
+          b.wildlifeBonus += 0.05;
+          break;
+        case "bridge_builder":
+          b.humanBonus += 0.10;
+          b.extraHumanTrust = true;
+          break;
         case "community_trust":
           b.humanBonus += 0.15;
           b.extraHumanTrust = true;

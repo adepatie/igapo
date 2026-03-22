@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { EncounterEngine } from "../systems/EncounterEngine";
 import { GameState } from "../systems/GameState";
 import type { EncounterNode } from "@igapo/shared";
+import { ambientSound } from "../systems/AmbientSound";
 
 interface EncounterSceneData {
   node: EncounterNode;
@@ -23,10 +24,15 @@ export class EncounterScene extends Phaser.Scene {
   init(data: EncounterSceneData) {
     this.state = data.state;
     this.engine = new EncounterEngine(this, data.node, this.state);
+    ambientSound.startEncounter(data.node.type);
   }
 
   create() {
     this.engine.create();
+  }
+
+  shutdown() {
+    ambientSound.endEncounter();
   }
 
   update(time: number, delta: number) {

@@ -23,7 +23,7 @@ export class UIScene extends Phaser.Scene {
     this.hud.create();
   }
 
-  update() {
-    this.hud.update();
+  update(_time: number, delta: number) {
+    this.hud.update(delta);
   }
 }

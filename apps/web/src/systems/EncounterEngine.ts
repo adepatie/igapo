@@ -26,7 +26,34 @@ const BONUS_CHOICES: Record<string, EncounterChoice[]> = {
       label: "Introduce yourself by your work. Communities know your kind of work.",
       successChance: 0.9,
     },
+    {
+      id: "_bonus_run_clinic",
+      label: "Offer to run a brief clinic. You have the supplies.",
+      successChance: 1.0,
+    },
   ],
+};
+
+// Node encounters considered as apex predator observations (Apex Observer growth)
+const APEX_PREDATOR_ENCOUNTERS = new Set([
+  "caiman_encounter", "harpy_territory", "jaguar_sighting", "flooded_forest",
+]);
+
+// Radio tip messages keyed by node id (for Correspondent Source Network)
+const RADIO_TIPS: Record<string, string> = {
+  caiman_bank:          "Radio: local fisher warns — caimans are nesting near the next bank. Go slow.",
+  varzea_village:       "Radio: someone upstream mentioned a village with a broken engine. They might need a medic.",
+  flooded_forest:       "Radio: atmospheric crackle, then a voice: 'don't anchor near the submerged trees after dark.'",
+  loggers_camp:         "Radio: a brief, businesslike transmission. Logging operation nearby. Papers, apparently, are mostly in order.",
+  trader_dock:          "Radio: a trading boat is anchored mid-river. They're carrying fuel.",
+  harpy_territory:      "Radio: brief static, then: 'something big in the canopy at the next fork. I'd stop and look.'",
+  research_camp:        "Radio: Dr. Ferreira's frequency. She sounds tired. 'Come by if you can. I have data I don't want to transmit.'",
+  blackwater_tributary: "Radio: distortion, then fragments: '—water's black here, engine runs rough—current reversal—'",
+  tapir_crossing:       "Radio: nothing intelligible, but the signal spikes at the right frequency. Something crossing.",
+  otter_lake:           "Radio: a guide's voice, amused: 'otters again. Whole family. They'll give you trouble if you idle too long.'",
+  owl_roost:            "Radio: nothing from this direction — but the birds went quiet.",
+  deep_tributary:       "Radio: an old frequency, years out of date. Someone's still using it. The message loops.",
+  destination:          "Radio: clear signal. The research station is transmitting. They're expecting someone.",
 };
 
 export class EncounterEngine {
@@ -37,6 +64,7 @@ export class EncounterEngine {
   private container!: Phaser.GameObjects.Container;
   private choiceButtons: Phaser.GameObjects.Text[] = [];
   private phase: "arrival" | "choice" | "outcome" = "arrival";
+  private _specimenGrantFired: boolean = false;
 
   constructor(scene: Phaser.Scene, node: EncounterNode, state: GameState) {
     this.scene = scene;
@@ -156,6 +184,10 @@ export class EncounterEngine {
       if (this.bonuses.extraHumanTrust && !available.some(c => c.id.includes("trust"))) {
         injected.push(BONUS_CHOICES.human[1]);
       }
+      // Medic: offer to run clinic if they have medicine to spare
+      if (this.state.archetypeId === "medic" && this.state.resources.medicine >= 15) {
+        injected.push(BONUS_CHOICES.human[2]);
+      }
     }
 
     // Filter injected: don't duplicate ids
@@ -235,6 +267,14 @@ export class EncounterEngine {
       }, {});
       return;
     }
+    if (choice.id === "_bonus_run_clinic") {
+      this.state.healedCommunities.add(this.node.id);
+      this.showOutcomeText(panelW, panelH, {
+        text: "You set up a makeshift clinic for two hours. Wound care, rehydration salts, a child's fever reduced. You leave behind more than medicine — you leave behind an account of who you are. Word travels faster than boats on this river.",
+        resourceDelta: { medicine: -15, morale: 20 },
+      }, {});
+      return;
+    }
 
     const outcome = resolveOutcome(adjustedChoice, this.state);
 
@@ -281,19 +321,51 @@ export class EncounterEngine {
     }
     if (outcome.fieldNote) this.state.addFieldNote(outcome.fieldNote);
 
+    // ── Naturalist: Specimen Journal ─────────────────────────────────────
+    if (outcome.fieldNote && this.node.type === "wildlife" && this.state.archetypeId === "naturalist") {
+      this.state.specimenCount++;
+      const level = Math.floor(this.state.specimenCount / 3);
+      if (level > this.state.specimenGrantLevel) {
+        this.state.specimenGrantLevel = level;
+        // Grant funding arrives
+        this.state.resources.fuel  = Math.min(100, this.state.resources.fuel  + 20);
+        this.state.resources.food  = Math.min(100, this.state.resources.food  + 15);
+        this.state.resources.morale = Math.min(100, this.state.resources.morale + 10);
+        deltas.fuel  = (deltas.fuel  ?? 0) + 20;
+        deltas.food  = (deltas.food  ?? 0) + 15;
+        deltas.morale = (deltas.morale ?? 0) + 10;
+        this._specimenGrantFired = true;
+      }
+    }
+
+    // ── Crew growth: check evolution conditions ───────────────────────────
+    this.checkCrewGrowth(outcome);
+
     const divY = -panelH / 2 + 68;
 
     this.container.add(this.scene.add.rectangle(0, divY + 110, panelW - 48, 1, 0x2a1e08));
 
+    let notifLines = 0;
     if (outcome.fieldNote) {
       const flash = this.scene.add.text(0, divY + 122, "✦ Field Note Gained", {
         fontSize: "11px", color: "#f5c842", fontFamily: "Georgia, serif", letterSpacing: 2,
       }).setOrigin(0.5, 0);
       this.container.add(flash);
       this.scene.tweens.add({ targets: flash, alpha: 0.4, duration: 800, yoyo: true, repeat: -1 });
+      notifLines++;
+    }
+    if (this._specimenGrantFired) {
+      const grantY = divY + 122 + notifLines * 18;
+      const grantFlash = this.scene.add.text(0, grantY,
+        `✦ Specimen Journal — funding received  (${this.state.specimenCount} specimens)`, {
+        fontSize: "10px", color: "#6ab04c", fontFamily: "Georgia, serif", letterSpacing: 1,
+      }).setOrigin(0.5, 0);
+      this.container.add(grantFlash);
+      this.scene.tweens.add({ targets: grantFlash, alpha: 0.3, duration: 1200, yoyo: true, repeat: -1 });
+      notifLines++;
     }
 
-    const outcomeStart = divY + (outcome.fieldNote ? 142 : 126);
+    const outcomeStart = divY + (notifLines > 0 ? 122 + notifLines * 18 + 8 : 126);
     this.container.add(
       this.scene.add.text(-panelW / 2 + 28, outcomeStart, outcome.text, {
         fontSize: "13px", color: "#d4c49a", fontFamily: "Georgia, serif",
@@ -368,9 +440,132 @@ export class EncounterEngine {
     return null;
   }
 
+  // ── Crew growth: trait evolution ─────────────────────────────────────────
+  private checkCrewGrowth(outcome: { resourceDelta?: Partial<Resources> }) {
+    for (const member of this.state.crew) {
+      switch (member.id) {
+        case "raimundo": {
+          // Storm-Tested: survive a navigation encounter in storm without morale collapse
+          const inStorm = this.node.type === "navigation" && this.state.weather === "storm";
+          const hasTrait = member.traits.some(t => t.id === "anxious_in_storms");
+          if (inStorm && hasTrait && this.state.resources.morale > 20) {
+            member.traits = member.traits.filter(t => t.id !== "anxious_in_storms");
+            member.traits.push({
+              id: "storm_tested",
+              label: "Storm-Tested",
+              description: "Raimundo has faced the worst and held. No more storm morale penalty.",
+            });
+            this._crewGrowthMessages.push(`${member.name} — Anxious in Storms → Storm-Tested`);
+          }
+          break;
+        }
+        case "dr_melo": {
+          // Apex Observer: encounter an apex predator node
+          const isApex = APEX_PREDATOR_ENCOUNTERS.has(this.node.id);
+          const hasObserver = member.traits.some(t => t.id === "apex_observer");
+          if (isApex && !hasObserver && outcome.resourceDelta) {
+            member.traits.push({
+              id: "apex_observer",
+              label: "Apex Observer",
+              description: "Having documented apex predators, Dr. Melo's wildlife observations carry greater authority.",
+            });
+            this._crewGrowthMessages.push(`${member.name} — gained Apex Observer`);
+          }
+          break;
+        }
+        case "solange": {
+          // Night Reader: survive a night encounter without morale collapse
+          const isNight = this.state.timeOfDay === "night";
+          const hasSuperstitious = member.traits.some(t => t.id === "superstitious");
+          if (isNight && hasSuperstitious && this.state.resources.morale > 25) {
+            member.traits = member.traits.filter(t => t.id !== "superstitious");
+            member.traits.push({
+              id: "night_reader",
+              label: "Night Reader",
+              description: "Solange has made peace with the night river. No more igapó penalty.",
+            });
+            this._crewGrowthMessages.push(`${member.name} — Superstitious → Night Reader`);
+          }
+          break;
+        }
+        case "catarina": {
+          // Bridge Builder: successfully navigate a human community encounter
+          const isCommunity = this.node.type === "human";
+          const hasBridge = member.traits.some(t => t.id === "bridge_builder");
+          // Only grant after notable success (morale didn't drop in a human encounter)
+          const moraleGained = (outcome.resourceDelta?.morale ?? 0) > 0;
+          if (isCommunity && !hasBridge && moraleGained) {
+            member.traits.push({
+              id: "bridge_builder",
+              label: "Bridge Builder",
+              description: "Catarina's network deepens. Human encounters start with better trust.",
+            });
+            this._crewGrowthMessages.push(`${member.name} — gained Bridge Builder`);
+          }
+          break;
+        }
+      }
+    }
+  }
+
   private close() {
+    // ── Correspondent: Source Network — generate radio tip ─────────────────
+    if (this.state.archetypeId === "correspondent" && this.node.type === "human") {
+      const map = this.scene.scene.get("MapScene") as Phaser.Scene & { getAdjacentUnvisited?: () => string[] };
+      // Find a nearby unvisited node to tip about — use node id directly if no map method
+      // We store the tip in state.radioTips for the HUD to display
+      const allNodeIds = Object.keys(RADIO_TIPS);
+      const unvisited = allNodeIds.filter(id => !this.state.visitedNodeIds.has(id));
+      if (unvisited.length > 0) {
+        const tipNodeId = unvisited[Math.floor(Math.random() * Math.min(3, unvisited.length))];
+        const tip = RADIO_TIPS[tipNodeId];
+        if (tip && !this.state.radioTips.includes(tip)) {
+          this.state.radioTips.push(tip);
+        }
+      }
+    }
+
     this.container.destroy();
-    this.scene.scene.stop("EncounterScene");
-    this.scene.scene.resume("MapScene");
+
+    // Show crew growth notifications if any, then close
+    if (this._crewGrowthMessages.length > 0) {
+      this._showCrewGrowthNotice();
+    } else {
+      this.scene.scene.stop("EncounterScene");
+      this.scene.scene.resume("MapScene");
+    }
+  }
+
+  private _crewGrowthMessages: string[] = [];
+
+  private _showCrewGrowthNotice() {
+    const { width, height } = this.scene.scale;
+    const notice = this.scene.add.container(width / 2, height / 2);
+
+    const bg = this.scene.add.rectangle(0, 0, 420, 80 + this._crewGrowthMessages.length * 22, 0x0a0705, 0.96)
+      .setStrokeStyle(1, 0x6ab04c);
+    notice.add(bg);
+
+    notice.add(this.scene.add.text(0, -30, "CREW GROWTH", {
+      fontSize: "10px", color: "#6ab04c", fontFamily: "Georgia, serif", letterSpacing: 4,
+    }).setOrigin(0.5));
+
+    this._crewGrowthMessages.forEach((msg, i) => {
+      notice.add(this.scene.add.text(0, -10 + i * 22, msg, {
+        fontSize: "12px", color: "#c8b080", fontFamily: "Georgia, serif", fontStyle: "italic",
+      }).setOrigin(0.5));
+    });
+
+    const cont = this.scene.add.text(0, 20 + this._crewGrowthMessages.length * 22, "Continue →", {
+      fontSize: "13px", color: "#a8c89a", fontFamily: "Georgia, serif",
+    }).setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on("pointerdown", () => {
+        notice.destroy();
+        cont.destroy();
+        this.scene.scene.stop("EncounterScene");
+        this.scene.scene.resume("MapScene");
+      });
+    notice.add(cont);
   }
 }

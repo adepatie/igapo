@@ -6,6 +6,7 @@ import { GameState } from "../systems/GameState";
 import { CrisisManager } from "../systems/CrisisManager";
 import { selectEncounter } from "../data/encounterSelector";
 import { generateRun } from "../data/mapGenerator";
+import { ambientSound } from "../systems/AmbientSound";
 
 interface MapSceneData {
   archetypeId: ArchetypeId;
@@ -27,6 +28,9 @@ export class MapScene extends Phaser.Scene {
   }
 
   create() {
+    // Start ambient sound on first user interaction
+    this.input.once("pointerdown", () => ambientSound.start());
+
     this.riverMap = new RiverMap(this, this.state);
     this.riverMap.create();
     this.crisis = new CrisisManager(this, this.state);
@@ -63,5 +67,6 @@ export class MapScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     this.riverMap.update(time, delta);
+    ambientSound.sync(this.state);
   }
 }

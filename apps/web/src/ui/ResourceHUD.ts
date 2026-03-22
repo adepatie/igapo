@@ -26,6 +26,10 @@ export class ResourceHUD {
   private crewLabels: Phaser.GameObjects.Text[] = [];
   private journalBtn!: Phaser.GameObjects.Text;
   private noteCount!: Phaser.GameObjects.Text;
+  private specimenProgress?: Phaser.GameObjects.Text;
+  private radioTipText?: Phaser.GameObjects.Text;
+  private radioTipTimer: number = 0;
+  private lastRadioTipCount: number = 0;
 
   constructor(scene: Phaser.Scene, state: GameState) {
     this.scene = scene;
@@ -110,11 +114,26 @@ export class ResourceHUD {
       fontSize: "10px", color: "#f5c842", fontFamily: "Georgia, serif",
     }).setOrigin(1, 1);
 
+    // ── Naturalist: Specimen Journal progress (below resource panel) ─────
+    if (this.state.archetypeId === "naturalist") {
+      this.specimenProgress = this.scene.add.text(pad + 6, pad + panelH + 10, "", {
+        fontSize: "10px", color: "#6ab04c", fontFamily: "Georgia, serif", fontStyle: "italic",
+      }).setOrigin(0, 0);
+    }
+
+    // ── Correspondent: Radio tip flash (above journal button) ─────────────
+    if (this.state.archetypeId === "correspondent") {
+      this.radioTipText = this.scene.add.text(width / 2, height - 48, "", {
+        fontSize: "11px", color: "#7a9aaa", fontFamily: "Georgia, serif", fontStyle: "italic",
+        wordWrap: { width: width * 0.5 }, align: "center",
+      }).setOrigin(0.5, 1).setAlpha(0);
+    }
+
     // ── Field Journal panel ──────────────────────────────────────────────
     this.journal.create();
   }
 
-  update() {
+  update(delta?: number) {
     const { resources } = this.state;
 
     for (const [key, bar] of this.bars) {
@@ -138,5 +157,39 @@ export class ResourceHUD {
     };
     this.weatherText.setText(weatherLabel[this.state.weather] ?? "");
     this.weatherText.setColor(weatherColor[this.state.weather] ?? "#e8a020");
+
+    // ── Naturalist: Specimen Journal progress ────────────────────────────
+    if (this.specimenProgress) {
+      const n3 = this.state.specimenCount % 3;
+      const next = n3 === 0 ? 3 : (3 - n3);
+      this.specimenProgress.setText(
+        `Specimen Journal: ${this.state.specimenCount} collected · ${next} until grant`
+      );
+    }
+
+    // ── Correspondent: Radio tip display ─────────────────────────────────
+    if (this.radioTipText) {
+      const tips = this.state.radioTips;
+      // Show new tips as they arrive
+      if (tips.length > this.lastRadioTipCount) {
+        const newTip = tips[tips.length - 1];
+        this.lastRadioTipCount = tips.length;
+        this.radioTipText.setText(newTip);
+        this.radioTipText.setAlpha(1);
+        this.radioTipTimer = 5000; // show for 5s
+      }
+      // Fade out over time
+      if (this.radioTipTimer > 0 && delta) {
+        this.radioTipTimer -= delta;
+        if (this.radioTipTimer <= 0) {
+          this.scene.tweens.add({
+            targets: this.radioTipText,
+            alpha: 0,
+            duration: 1200,
+            ease: "Sine.easeOut",
+          });
+        }
+      }
+    }
   }
 }
