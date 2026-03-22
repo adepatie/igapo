@@ -3,6 +3,8 @@ import { GameState } from "../systems/GameState";
 
 // --- Field Notes ---
 
+export const FIELD_NOTES_BY_ID: Record<string, FieldNote> = {};
+
 const FIELD_NOTES: Record<string, FieldNote> = {
   caiman_nesting: {
     id: "caiman_nesting",
@@ -25,6 +27,9 @@ const FIELD_NOTES: Record<string, FieldNote> = {
     text: "Giant river otters mob predators cooperatively using coordinated noise and aggression. A group of 4+ otters will challenge even a caiman.",
   },
 };
+
+// Populate the exported lookup after the object is built
+Object.assign(FIELD_NOTES_BY_ID, FIELD_NOTES);
 
 // --- Encounters ---
 

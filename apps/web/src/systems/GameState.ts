@@ -1,38 +1,38 @@
-import type { Resources, CrewMember, RiverNode, FieldNote, Season, TimeOfDay } from "@igapo/shared";
+import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Archetype } from "@igapo/shared";
+import { FIELD_NOTES_BY_ID } from "../data/encounterData";
 
-/**
- * Central game state for a single run.
- * All mutable state lives here; systems read/write via this object.
- */
 export class GameState {
-  // Resources
-  resources: Resources = {
-    fuel: 100,
-    food: 100,
-    medicine: 60,
-    equipment: 100,
-    morale: 100,
-  };
-
-  // Expedition context
+  resources: Resources;
   season: Season = "wet";
   timeOfDay: TimeOfDay = "dawn";
   dayNumber: number = 1;
+  archetypeId: string;
 
-  // Navigation
   currentNodeId: string = "start";
   visitedNodeIds: Set<string> = new Set(["start"]);
   revealedNodeIds: Set<string> = new Set(["start"]);
 
-  // Knowledge
   fieldNotes: FieldNote[] = [];
   unlockedFieldNoteIds: Set<string> = new Set();
 
-  // Crew
   crew: CrewMember[] = [];
-
-  // Meta (persists across runs — loaded from save)
   codexEntries: Set<string> = new Set();
+
+  constructor(archetype: Archetype) {
+    this.archetypeId = archetype.id;
+    this.resources = {
+      fuel: archetype.startingResources.fuel ?? 100,
+      food: archetype.startingResources.food ?? 100,
+      medicine: archetype.startingResources.medicine ?? 60,
+      equipment: archetype.startingResources.equipment ?? 100,
+      morale: archetype.startingResources.morale ?? 100,
+    };
+    // Grant starting field notes
+    for (const id of archetype.bonusFieldNoteIds) {
+      const note = FIELD_NOTES_BY_ID[id];
+      if (note) this.addFieldNote(note);
+    }
+  }
 
   hasFieldNote(id: string): boolean {
     return this.unlockedFieldNoteIds.has(id);

@@ -1,11 +1,13 @@
 import Phaser from "phaser";
+import { ARCHETYPES, assignCrew } from "@igapo/shared";
+import type { ArchetypeId } from "@igapo/shared";
 import { RiverMap } from "../systems/RiverMap";
 import { GameState } from "../systems/GameState";
 
-/**
- * MapScene — the overhead river navigation layer.
- * Renders the branching river graph, fog of war, and handles node selection.
- */
+interface MapSceneData {
+  archetypeId: ArchetypeId;
+}
+
 export class MapScene extends Phaser.Scene {
   private riverMap!: RiverMap;
   private state!: GameState;
@@ -14,12 +16,16 @@ export class MapScene extends Phaser.Scene {
     super({ key: "MapScene" });
   }
 
+  init(data: MapSceneData) {
+    const archetype = ARCHETYPES.find((a) => a.id === data.archetypeId) ?? ARCHETYPES[0];
+    this.state = new GameState(archetype);
+    this.state.crew = assignCrew(2);
+  }
+
   create() {
-    this.state = new GameState();
     this.riverMap = new RiverMap(this, this.state);
     this.riverMap.create();
 
-    // Launch the persistent UI overlay
     this.scene.launch("UIScene", { state: this.state });
 
     this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
