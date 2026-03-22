@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { Codex } from "../systems/Codex";
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -74,6 +75,25 @@ export class TitleScene extends Phaser.Scene {
       color: "#3a3020",
       fontFamily: "Georgia, serif",
     }).setOrigin(1, 1);
+
+    // Returning player: codex status
+    const codex = Codex.load();
+    if (codex.totalRuns > 0) {
+      this.add.text(cx, height * 0.84, `${codex.totalRuns} expedition${codex.totalRuns !== 1 ? "s" : ""} made  ·  ${codex.totalNotes} field note${codex.totalNotes !== 1 ? "s" : ""} documented`, {
+        fontSize: "11px",
+        color: "#4a3820",
+        fontFamily: "Georgia, serif",
+        fontStyle: "italic",
+      }).setOrigin(0.5);
+      if (codex.metaFragments.length > 0) {
+        this.add.text(cx, height * 0.88, `Zona Silenciosa: ${codex.metaFragments.length} / 8 fragments`, {
+          fontSize: "10px",
+          color: codex.metaFragments.length >= 5 ? "#c84040" : "#3a2a1a",
+          fontFamily: "Georgia, serif",
+          letterSpacing: 2,
+        }).setOrigin(0.5);
+      }
+    }
 
     // Pulse the begin text
     this.tweens.add({

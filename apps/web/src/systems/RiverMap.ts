@@ -50,7 +50,7 @@ export class RiverMap {
     this.drawLegend();
   }
 
-  handleClick(pointer: Phaser.Input.Pointer) {
+  handleClick(pointer: Phaser.Input.Pointer, onMoved?: (nodeId: string) => void) {
     const node = this.nodeAt(pointer.x, pointer.y);
     if (!node) return;
     if (!this.state.revealedNodeIds.has(node.id)) return;
@@ -62,6 +62,8 @@ export class RiverMap {
     this.state.drainResources({ fuel: 10, food: 5 });
     this.revealNeighbors(node.id);
     this.refresh();
+
+    onMoved?.(node.id);
 
     const encounter = ENCOUNTERS[node.encounterId];
     if (encounter) {

@@ -288,7 +288,7 @@ type OutcomeFn = (success: boolean, state: GameState) => EncounterOutcome;
 const OUTCOME_MAP: Record<string, OutcomeFn> = {
   trade: () => ({
     text: "You resupply fully. The trader says nothing, but slides a folded note across the counter with your change. It's a rough sketch of a channel marked 'safe in wet season.'",
-    resourceDelta: { fuel: -20, food: -20 },
+    resourceDelta: { fuel: 30, food: 30 },
   }),
 
   ask_river: () => ({
@@ -305,7 +305,7 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
         }
       : {
           text: "One caiman opens its jaws in a threat display. You back the engine slowly. Ten minutes lost, but no damage done.",
-          resourceDelta: { fuel: 5 },
+          resourceDelta: { fuel: -5 },
         },
 
   navigate_through: (success) =>
@@ -316,7 +316,7 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
         }
       : {
           text: "The large female lunges at the hull — defensive, not hunting. The impact damages a fuel line. You lose fuel you can't afford.",
-          resourceDelta: { fuel: -20, equipment: -15 },
+          resourceDelta: { fuel: -20, equipment: -15, morale: -10 },
         },
 
   disturbance_technique: (success) =>
@@ -327,7 +327,7 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
         }
       : {
           text: "The technique half-works. Two caimans retreat; the large female doesn't buy it. You lose time navigating around her.",
-          resourceDelta: { fuel: 5 },
+          resourceDelta: { fuel: -5 },
         },
 
   follow_boto: (success) =>
@@ -339,7 +339,7 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
         }
       : {
           text: "The botos dive and vanish. The channel they were in narrows to nothing. You backtrack, losing time.",
-          resourceDelta: { fuel: 8 },
+          resourceDelta: { fuel: -8 },
         },
 
   observe_boto: () => ({
@@ -400,7 +400,7 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
 
   no_judgment: () => ({
     text: "They trade you fuel at fair price. The young one refills your tank himself. As you leave he says, quietly: 'There's something wrong up past the falls. I don't know what it is. But we stopped going up there three months ago.'",
-    resourceDelta: { fuel: -15 },
+    resourceDelta: { fuel: 20 },
   }),
 
   challenge: (success) =>
@@ -432,12 +432,12 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
         }
       : {
           text: "The acidity gets into the fuel line. Minor damage — fixable, but it costs equipment condition you'll need later.",
-          resourceDelta: { equipment: -20, fuel: -10 },
+          resourceDelta: { equipment: -20, fuel: -10, morale: -5 },
         },
 
   proceed_knowledgeable: () => ({
     text: "A pre-emptive flush of the fuel line — thirty seconds of work that saves the engine from hours of wear. You move through the blackwater cleanly.",
-    resourceDelta: { equipment: -3 },
+    resourceDelta: { equipment: -3, morale: 5 },
   }),
 
   enter_facility: () => ({
