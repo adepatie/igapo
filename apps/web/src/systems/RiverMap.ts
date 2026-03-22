@@ -129,8 +129,16 @@ export class RiverMap {
     this.hideTooltip();
     const { width } = this.scene.scale;
 
+    const hasRadioIntel = this.state.radioTipNodeIds.has(node.id);
+
     const lines: string[] = [node.name];
     if (node.hint) lines.push(node.hint);
+
+    // Correspondent radio intel overrides the generic hint
+    if (hasRadioIntel) {
+      // Show a radio intel indicator line (the full tip text is in the HUD flash)
+      lines.splice(1, lines.length - 1, "📻 Radio intel received");
+    }
 
     // Time-gated hint
     const poolTimes = node.encounterPool?.flatMap(e => e.conditions?.timeOfDay ?? []);
@@ -142,7 +150,7 @@ export class RiverMap {
     const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1);
     lines.push(`${typeLabel}  ·  ${node.region}`);
 
-    const tipW = 220;
+    const tipW = 240;
     const tipH = lines.length * 16 + 16;
     let tx = x + 18;
     if (tx + tipW > width - 10) tx = x - tipW - 12;
@@ -150,18 +158,20 @@ export class RiverMap {
     this.tooltip = this.scene.add.container(tx, y - tipH / 2);
     this.tooltip.setDepth(200);
 
+    const borderColor = hasRadioIntel ? 0x4a7a8a : 0x3d2e0a;
     const bg = this.scene.add.rectangle(tipW / 2, tipH / 2, tipW, tipH, 0x0a0705, 0.92)
-      .setStrokeStyle(1, 0x3d2e0a);
+      .setStrokeStyle(1, borderColor);
     this.tooltip.add(bg);
 
     lines.forEach((line, i) => {
       const isTitle = i === 0;
       const isType = i === lines.length - 1;
+      const isIntel = hasRadioIntel && i === 1;
       const t = this.scene.add.text(10, 8 + i * 16, line, {
         fontSize: isTitle ? "12px" : "10px",
-        color: isTitle ? "#f5c842" : isType ? "#5a4a2a" : "#a09070",
+        color: isTitle ? "#f5c842" : isIntel ? "#7a9aaa" : isType ? "#5a4a2a" : "#a09070",
         fontFamily: "Georgia, serif",
-        fontStyle: isTitle ? "italic" : "normal",
+        fontStyle: isTitle ? "italic" : isIntel ? "italic" : "normal",
         wordWrap: { width: tipW - 20 },
       }).setOrigin(0, 0);
       this.tooltip.add(t);

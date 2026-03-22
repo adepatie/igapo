@@ -11,6 +11,9 @@ const META_FRAGMENT_TRIGGERS: Record<string, string> = {
   ask_research:       "fragment_3", // researcher's sensor buoys gone silent
   ask_quiet_zones:    "fragment_4", // the "quiet zones" named explicitly
   enter_facility:     "fragment_5", // Dr. Carvalho's unfinished journal entry
+  trader_trade:       "fragment_6", // map with researcher's name on it
+  challenge:          "fragment_7", // illegal concession zone number
+  report_findings:    "fragment_8", // reaching the destination, told "go in"
 };
 
 export interface CodexData {

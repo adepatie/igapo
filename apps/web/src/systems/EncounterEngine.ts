@@ -3,6 +3,7 @@ import type { EncounterNode, EncounterChoice, Resources } from "@igapo/shared";
 import { GameState } from "./GameState";
 import { resolveOutcome } from "../data/encounterData";
 import { computeBonuses, applySuccessBonus, type ActiveBonuses } from "./BonusSystem";
+import { Codex } from "./Codex";
 
 const W_FRAC = 0.68;
 
@@ -137,6 +138,23 @@ export class EncounterEngine {
           fontStyle: "italic", wordWrap: { width: panelW - 56 },
         }).setOrigin(0, 0)
       );
+    }
+
+    // ── Medic: Safe Harbor — returning to a previously healed community ─────
+    if (this.state.archetypeId === "medic" && this.node.type === "human") {
+      const prevHealed = Codex.load().medicHealedCommunities;
+      if (prevHealed.includes(this.node.id)) {
+        // Apply silent resource bonus on arrival
+        this.state.resources.medicine = Math.min(100, this.state.resources.medicine + 12);
+        this.state.resources.morale   = Math.min(100, this.state.resources.morale   + 8);
+        // Show safe harbor banner
+        this.container.add(
+          this.scene.add.text(panelW / 2 - 28, -panelH / 2 + 14,
+            "◆ Safe Harbor", {
+            fontSize: "9px", color: "#4a9ade", fontFamily: "Georgia, serif", letterSpacing: 2,
+          }).setOrigin(1, 0)
+        );
+      }
     }
 
     // Time/weather context tag
@@ -514,16 +532,16 @@ export class EncounterEngine {
   private close() {
     // ── Correspondent: Source Network — generate radio tip ─────────────────
     if (this.state.archetypeId === "correspondent" && this.node.type === "human") {
-      const map = this.scene.scene.get("MapScene") as Phaser.Scene & { getAdjacentUnvisited?: () => string[] };
-      // Find a nearby unvisited node to tip about — use node id directly if no map method
-      // We store the tip in state.radioTips for the HUD to display
       const allNodeIds = Object.keys(RADIO_TIPS);
-      const unvisited = allNodeIds.filter(id => !this.state.visitedNodeIds.has(id));
+      const unvisited = allNodeIds.filter(id =>
+        !this.state.visitedNodeIds.has(id) && !this.state.radioTipNodeIds.has(id)
+      );
       if (unvisited.length > 0) {
         const tipNodeId = unvisited[Math.floor(Math.random() * Math.min(3, unvisited.length))];
         const tip = RADIO_TIPS[tipNodeId];
-        if (tip && !this.state.radioTips.includes(tip)) {
+        if (tip) {
           this.state.radioTips.push(tip);
+          this.state.radioTipNodeIds.add(tipNodeId);
         }
       }
     }

@@ -31,6 +31,9 @@ export class GameState {
   // Medic: Clinic Reputation — communities where clinic was run this run
   healedCommunities: Set<string> = new Set();
 
+  // Correspondent: node IDs that have radio intel this run (for map tooltip)
+  radioTipNodeIds: Set<string> = new Set();
+
   constructor(archetype: Archetype) {
     this.archetypeId = archetype.id;
     this.resources = {

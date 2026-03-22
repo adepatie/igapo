@@ -78,7 +78,7 @@ export class RunEndScene extends Phaser.Scene {
     // Codex footer
     const codex = Codex.load();
     this.add.text(cx, 490,
-      `${codex.totalRuns} expedition${codex.totalRuns !== 1 ? "s" : ""}  ·  ${codex.totalNotes} species documented  ·  ${codex.metaFragments.length}/5 fragments`,
+      `${codex.totalRuns} expedition${codex.totalRuns !== 1 ? "s" : ""}  ·  ${codex.totalNotes} species documented  ·  ${codex.metaFragments.length}/8 fragments`,
       {
         fontSize: "11px", color: "#4a3820", fontFamily: "Georgia, serif", fontStyle: "italic",
       }).setOrigin(0.5);
@@ -87,7 +87,7 @@ export class RunEndScene extends Phaser.Scene {
       this.add.text(cx, 510,
         `Zona Silenciosa: ${codex.metaFragments.length} / 5`, {
         fontSize: "10px",
-        color: codex.metaFragments.length >= 5 ? "#c84040" : "#3a2a1a",
+        color: codex.metaFragments.length >= 8 ? "#c84040" : codex.metaFragments.length >= 5 ? "#7a4a2a" : "#3a2a1a",
         fontFamily: "Georgia, serif",
         letterSpacing: 2,
       }).setOrigin(0.5);

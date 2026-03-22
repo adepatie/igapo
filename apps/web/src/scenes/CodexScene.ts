@@ -50,7 +50,7 @@ export class CodexScene extends Phaser.Scene {
       fontSize: "26px", color: "#f5c842", fontFamily: "Georgia, serif", fontStyle: "italic",
     }).setOrigin(0.5);
 
-    this.add.text(cx, 54, `${this.codex.totalRuns} expedition${this.codex.totalRuns !== 1 ? "s" : ""}  ·  ${this.codex.totalNotes} species documented  ·  ${this.codex.metaFragments.length}/5 fragments`, {
+    this.add.text(cx, 54, `${this.codex.totalRuns} expedition${this.codex.totalRuns !== 1 ? "s" : ""}  ·  ${this.codex.totalNotes} species documented  ·  ${this.codex.metaFragments.length}/8 fragments`, {
       fontSize: "11px", color: "#5a4a2a", fontFamily: "Georgia, serif", fontStyle: "italic",
     }).setOrigin(0.5);
 
@@ -156,9 +156,12 @@ export class CodexScene extends Phaser.Scene {
 
   private renderFragments() {
     const { width, height } = this.scale;
-    const ALL_FRAGMENT_IDS = ["fragment_1", "fragment_2", "fragment_3", "fragment_4", "fragment_5"];
+    const ALL_FRAGMENT_IDS = [
+      "fragment_1", "fragment_2", "fragment_3", "fragment_4",
+      "fragment_5", "fragment_6", "fragment_7", "fragment_8",
+    ];
     const startY = 120;
-    const entryH = 100;
+    const entryH = 82;
 
     if (this.codex.metaFragments.length === 0) {
       this.contentContainer.add(
@@ -218,12 +221,23 @@ export class CodexScene extends Phaser.Scene {
       }
     });
 
-    // Teaser if all 5 found
-    if (this.codex.metaFragments.length >= 5) {
-      const y = startY + 5 * (entryH + 10) + 12;
+    // Partial teaser at 5
+    if (this.codex.metaFragments.length >= 5 && this.codex.metaFragments.length < 8) {
+      const y = startY + ALL_FRAGMENT_IDS.length * (entryH + 8) + 8;
       this.contentContainer.add(
         this.add.text(width / 2, y,
-          "You have assembled the picture. The Zona Silenciosa is real, it is expanding,\nand someone needs to go in. In a future run, a new path will open.", {
+          "The picture is taking shape. Three more pieces remain.", {
+          fontSize: "10px", color: "#7a4a2a", fontFamily: "Georgia, serif",
+          fontStyle: "italic", align: "center",
+        }).setOrigin(0.5, 0)
+      );
+    }
+    // Full teaser at 8
+    if (this.codex.metaFragments.length >= 8) {
+      const y = startY + ALL_FRAGMENT_IDS.length * (entryH + 8) + 8;
+      this.contentContainer.add(
+        this.add.text(width / 2, y,
+          "You have assembled the full picture. The Zona Silenciosa is real, it is expanding,\nand someone has told you directly: it has to be you.", {
           fontSize: "11px", color: "#c84040", fontFamily: "Georgia, serif",
           fontStyle: "italic", align: "center", lineSpacing: 5,
         }).setOrigin(0.5, 0)
@@ -301,7 +315,7 @@ export class CodexScene extends Phaser.Scene {
       ["Species documented", `${this.codex.totalNotes}`],
       ["Locations visited", `${this.codex.visitedNodeIds.length} / ${Object.keys(KNOWN_PLACES).length}`],
       ["Destination reached", this.codex.destinationReached ? "Yes" : "Not yet"],
-      ["Zona Silenciosa fragments", `${this.codex.metaFragments.length} / 5`],
+      ["Zona Silenciosa fragments", `${this.codex.metaFragments.length} / 8`],
     ];
 
     stats.forEach(([label, value], i) => {

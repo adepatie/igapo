@@ -41,4 +41,25 @@ export const META_FRAGMENTS: Record<string, MetaFragment> = {
     body:
       "The last entry in Dr. Ana Carvalho's field journal is dated fourteen months ago. Most of it is methodical data notation — temperature readings, GPS coordinates, species counts. The final paragraph is different:\n\n'The silence isn't absence. The water isn't dead — the instruments still register microorganism activity, dissolved oxygen is normal, water chemistry is within range. But there is nothing above a certain complexity threshold. No behavior. No pattern. As if something has removed the capacity for decision-making from every living thing above bacterial scale. I don't have a—'\n\nThe sentence ends there. The next page was torn out.",
   },
+  fragment_6: {
+    id: "fragment_6",
+    title: "The Map With No Name",
+    source: "Folded inside a supply purchase at Atracadouro do Comerciante",
+    body:
+      "The trader said it came off a researcher's boat a few months ago — thrown in with the transaction, like ballast. It's a waterproofed survey map of the upper Marié tributaries, printed on institutional stock. Someone has annotated it in red marker: circles, crosses, one area shaded entirely. In the margin, in different handwriting, a name: Dr. A. Carvalho.\n\nThe shaded area and the area marked PROJETO SILÊNCIO on the facility door cover the same coordinates.",
+  },
+  fragment_7: {
+    id: "fragment_7",
+    title: "Zone Number Six",
+    source: "Noticed at the logging camp, Acampamento Madeireiro",
+    body:
+      "The papers were real, mostly. Four concession numbers matched the INCRA registry. The fifth — written smaller than the others, in different ink, as if added after — didn't correspond to any record you knew. The concession area it covered extended north along the Marié corridor, into a zone that the other paperwork carefully avoided naming.\n\nSomeone had registered an operation under a legal concession name specifically chosen to make the zone invisible to standard audits. You noted the number. You did not say you noted it.",
+  },
+  fragment_8: {
+    id: "fragment_8",
+    title: "Someone Needs to Go In",
+    source: "Estação Científica Várzea — end of the expedition",
+    body:
+      "The station director listened without interrupting. When you finished, she pulled out the map — the one with the red circle. 'You're the third expedition to bring pieces of this back. The first two didn't make it as far as you.' She tapped the Zona Silenciosa. 'We need someone to go in. Not this season. With the right equipment. With someone who has already made this run.'\n\nShe looked at you for a long time.\n\n'You've made it now.'",
+  },
 };
