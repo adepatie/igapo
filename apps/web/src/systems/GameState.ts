@@ -94,7 +94,7 @@ export class GameState {
     const roll = Math.random();
     const transitions: Record<Weather, Weather[]> = {
       clear:            roll < 0.15 ? ["cloudy"]           : ["clear"],
-      cloudy:           roll < 0.25 ? ["storm_approaching"] : roll < 0.1 ? ["clear"] : ["cloudy"],
+      cloudy:           roll < 0.1 ? ["clear"] : roll < 0.25 ? ["storm_approaching"] : ["cloudy"],
       storm_approaching: roll < 0.5  ? ["storm"]            : ["storm_approaching"],
       storm:            roll < 0.4  ? ["cloudy"]           : ["storm"],
     };
