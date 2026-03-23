@@ -12,6 +12,11 @@ export function generateRun(): RunMap {
       x: 140, y: 360,
       encounterId: "town_start",
       hint: "Last resupply point. Fuel, food, and local knowledge.",
+      encounterPool: [
+        { encounterId: "town_start", weight: 2 },
+        { encounterId: "town_start_wet", conditions: { season: ["wet"] }, weight: 3 },
+        { encounterId: "town_start_dry", conditions: { season: ["dry"] }, weight: 3 },
+      ],
     },
     {
       id: "caiman_bank",
@@ -184,6 +189,10 @@ export function generateRun(): RunMap {
       x: 1110, y: 360,
       encounterId: "story_destination",
       hint: "A research station. The reason you came.",
+      encounterPool: [
+        { encounterId: "story_destination", weight: 3 },
+        { encounterId: "story_destination_fragments", conditions: { minRun: 2 }, weight: 2 },
+      ],
     },
   ];
 

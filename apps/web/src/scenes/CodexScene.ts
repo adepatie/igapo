@@ -34,6 +34,10 @@ export class CodexScene extends Phaser.Scene {
   private activeTab: Tab = "species";
   private tabBtns: Map<Tab, Phaser.GameObjects.Text> = new Map();
   private contentContainer!: Phaser.GameObjects.Container;
+  private scrollY: number = 0;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private wheelHandler: ((p: any, g: any, dx: number, dy: number) => void) | null = null;
+  private maskShape: Phaser.GameObjects.Graphics | null = null;
 
   constructor() {
     super({ key: "CodexScene" });
@@ -88,7 +92,21 @@ export class CodexScene extends Phaser.Scene {
       .on("pointerdown", () => this.scene.start("TitleScene"));
   }
 
+  private clearScroll() {
+    if (this.wheelHandler) {
+      this.input.off("wheel", this.wheelHandler);
+      this.wheelHandler = null;
+    }
+    if (this.maskShape) {
+      this.maskShape.destroy();
+      this.maskShape = null;
+    }
+    this.scrollY = 0;
+    this.contentContainer.y = 0;
+  }
+
   private switchTab(tab: Tab) {
+    this.clearScroll();
     this.activeTab = tab;
     this.tabBtns.forEach((btn, id) => btn.setColor(id === tab ? "#f5c842" : "#5a4a2a"));
     this.contentContainer.destroy();
@@ -110,7 +128,11 @@ export class CodexScene extends Phaser.Scene {
   private renderSpecies() {
     const { width, height } = this.scale;
     const startY = 120;
+    const clipTop = startY;
+    const clipBottom = height - 40;
+    const clipH = clipBottom - clipTop;
     const colW = (width - 80) / 2;
+    const entryH = 90;
 
     if (this.codex.allNoteIds.length === 0) {
       this.contentContainer.add(
@@ -129,9 +151,7 @@ export class CodexScene extends Phaser.Scene {
       const col = i % 2;
       const row = Math.floor(i / 2);
       const x = 40 + col * colW;
-      const y = startY + row * 90;
-
-      if (y + 90 > height - 40) return;
+      const y = startY + row * entryH;
 
       const card = this.add.rectangle(x + colW / 2, y + 40, colW - 12, 80, 0x0d0a06)
         .setStrokeStyle(1, 0x2a1e08);
@@ -150,6 +170,30 @@ export class CodexScene extends Phaser.Scene {
         }).setOrigin(0, 0)
       );
     });
+
+    // Scrollable mask if content overflows
+    const rows = Math.ceil(this.codex.allNoteIds.length / 2);
+    const totalContentH = rows * entryH;
+    const maxScroll = Math.max(0, totalContentH - clipH + startY);
+
+    if (maxScroll > 0) {
+      this.maskShape = this.make.graphics();
+      this.maskShape.fillRect(0, clipTop, width, clipH);
+      const mask = new Phaser.Display.Masks.GeometryMask(this, this.maskShape);
+      this.contentContainer.setMask(mask);
+
+      this.wheelHandler = (_p, _g, _dx, dy) => {
+        this.scrollY = Phaser.Math.Clamp(this.scrollY + dy * 0.4, 0, maxScroll);
+        this.contentContainer.y = -this.scrollY;
+      };
+      this.input.on("wheel", this.wheelHandler);
+
+      this.contentContainer.add(
+        this.add.text(width / 2, startY + totalContentH + 8, "↑  scroll  ↑", {
+          fontSize: "10px", color: "#3a2e18", fontFamily: "Georgia, serif", fontStyle: "italic",
+        }).setOrigin(0.5, 0)
+      );
+    }
   }
 
   // ── Fragments ─────────────────────────────────────────────────────────────

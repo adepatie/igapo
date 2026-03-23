@@ -91,6 +91,43 @@ export const ENCOUNTERS: Record<string, EncounterNode> = {
     ],
   },
 
+  town_start_wet: {
+    id: "town_start_wet",
+    title: "Porto Alegre do Rio — Flood Season",
+    type: "human",
+    arrivalText:
+      "The dock town is half-drowned. The lower market stalls are underwater; the trader has moved everything to the second floor of a stilted warehouse. The river is copper-colored from upstream sediment. A boat has come loose from a mooring and drifted into the fuel depot — no one seems alarmed.",
+    choices: [
+      { id: "trade_wet", label: "Resupply through the upper window. Standard prices.", successChance: 1.0 },
+      { id: "ask_flooding", label: "Ask how far the flooding extends upstream.", successChance: 1.0 },
+    ],
+  },
+
+  town_start_dry: {
+    id: "town_start_dry",
+    title: "Porto Alegre do Rio — Dry Season",
+    type: "human",
+    arrivalText:
+      "The dock extends into what was, in the wet season, three meters of navigable water. The fuel depot is beached on cracked mud. A hand-painted sign reads: COMBUSTÍVEL RACIONADO — CONSULTE O PREÇO. The trader stands at the end of the dock, arms crossed, watching your approach.",
+    choices: [
+      { id: "trade_dry", label: "Buy fuel at dry-season price — you need it.", successChance: 1.0 },
+      { id: "ask_routes_dry", label: "Ask about navigable routes in low water.", successChance: 1.0 },
+      { id: "negotiate_dry", label: "Negotiate a lower price — explain the expedition.", successChance: 0.5 },
+    ],
+  },
+
+  story_destination_fragments: {
+    id: "story_destination_fragments",
+    title: "Estação Científica Várzea",
+    type: "story",
+    arrivalText:
+      "You've arrived. The station director is waiting at the dock — she received word of your approach by radio two days ago. She looks at you for a moment before speaking. 'The trader on the Marié told us someone was asking about the Zona Silenciosa at every stop. We hoped it was you.' She hands you a file. It has your name on the cover, written in handwriting you don't recognize.",
+    choices: [
+      { id: "report_findings_fragments", label: "Report everything you found — every detail.", successChance: 1.0 },
+      { id: "ask_file_origin", label: "Ask who prepared this file before you arrived.", successChance: 1.0 },
+    ],
+  },
+
   wildlife_caiman: {
     id: "wildlife_caiman",
     title: "Caiman Banks",
@@ -733,6 +770,46 @@ const OUTCOME_MAP: Record<string, OutcomeFn> = {
   report_findings: () => ({
     text: "The station director listens without interrupting. When you finish, she pulls out the map with the red circle. 'You're the third expedition to come back with pieces of this. The first two didn't get as far as you.' She taps the Zona Silenciosa. 'We need someone to go in. Not this season. But next season — with the right equipment.' She looks at you.",
     resourceDelta: {},
+  }),
+
+  trade_wet: () => ({
+    text: "You load supplies through an upper window — there's no deck space. The trader charges standard prices without comment. As you push off, she calls down: 'The upper river is three weeks behind last year's flood peak. Your side channels will be deeper than any map shows. Allow extra time.'",
+    resourceDelta: { fuel: 30, food: 25 },
+  }),
+
+  ask_flooding: () => ({
+    text: "The trader pulls out a hand-drawn waterline map, updated in pencil. 'As of four days ago: two meters above last year at this date. The Mata Alagada is fully flooded — deeper than most boats have seen. Your engine will hit submerged roots if you're not watching.' She points to a section of river ahead.",
+    resourceDelta: { morale: 5 },
+  }),
+
+  trade_dry: () => ({
+    text: "You pay the dry-season price. It's steep. The trader counts the money without apology. As she hands over the fuel, she adds: 'If you're going to Banco dos Jacarés, avoid the left channel — the water's gone and the caimans have nowhere to go. They're not happy about it.'",
+    resourceDelta: { fuel: 25, food: 20 },
+  }),
+
+  ask_routes_dry: () => ({
+    text: "She draws a route from memory — main channel to the first fork, right tributary, then a sandbar you'll need to portage around. 'The left route is sand from the Banco to the Igarapé Escuro. Three boats got stuck last week. Right adds an hour but you'll have water under you.'",
+    resourceDelta: { fuel: 5 },
+  }),
+
+  negotiate_dry: (success) => success
+    ? {
+        text: "She listens to the expedition brief without expression, then discounts the fuel by twenty percent. 'Research is one of three reasons I do that. The other two are medical and government, and I don't like governments.' She doesn't elaborate.",
+        resourceDelta: { fuel: 30, food: 20 },
+      }
+    : {
+        text: "'Dry season price is dry season price.' She isn't unkind about it. 'I have six fishing families who need the same fuel and none of them have expedition backing.' Fair point. You pay full price.",
+        resourceDelta: { fuel: 20, food: 15 },
+      },
+
+  report_findings_fragments: () => ({
+    text: "She listens for forty minutes without interrupting. When you finish, she opens a cabinet: a shelf of identical files. Twelve. Yours is the thirteenth. 'Every expedition that found something.' She taps your file label. 'You found more than most. That's why your file existed before you arrived.' She sits back down. 'The Zona Silenciosa is not an ecological event. We need someone to go to the origin point. The coordinates are in the file.' She looks at you. 'We need that to be you.'",
+    resourceDelta: { morale: 20 },
+  }),
+
+  ask_file_origin: () => ({
+    text: "'Dr. Ferreira compiled it from radio reports,' the director says. She pauses. 'Dr. Ferreira went into the upper Marié basin three months ago. She hasn't made contact since.' She says it like a statement of fact. Then: 'The file was prepared before she left. She believed someone would follow the trail she laid.' A pause. 'That's you.'",
+    resourceDelta: { morale: -5 },
   }),
 
   // ── New outcomes ──────────────────────────────────────────────────────────

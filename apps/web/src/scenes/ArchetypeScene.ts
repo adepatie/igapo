@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { ARCHETYPES } from "@igapo/shared";
 import type { Archetype } from "@igapo/shared";
+import { Codex } from "../systems/Codex";
 
 const CARD_W = 220;
 const CARD_H = 310;
@@ -54,6 +55,21 @@ export class ArchetypeScene extends Phaser.Scene {
       color: "#7a8c6a",
       fontFamily: "Georgia, serif",
       fontStyle: "italic",
+    }).setOrigin(0.5);
+
+    // Season forecast
+    const runCount = Codex.load().totalRuns;
+    const expectedSeason = (runCount % 2 === 0) ? "wet" : "dry";
+    const seasonColor = expectedSeason === "wet" ? "#4a8cba" : "#c8a84a";
+    const seasonLabel = expectedSeason === "wet" ? "Wet Season" : "Dry Season";
+    const seasonNote = expectedSeason === "wet"
+      ? "Rivers high · Forests flooded · Dolphins deep inland · Higher fuel drain"
+      : "Rivers low · Sandbars exposed · Piranhas concentrated · Resupply costs more";
+    this.add.text(cx, 94, `Expected: ${seasonLabel}`, {
+      fontSize: "12px", color: seasonColor, fontFamily: "Georgia, serif", letterSpacing: 2,
+    }).setOrigin(0.5);
+    this.add.text(cx, 112, seasonNote, {
+      fontSize: "10px", color: "#4a3820", fontFamily: "Georgia, serif", fontStyle: "italic",
     }).setOrigin(0.5);
 
     const totalW = ARCHETYPES.length * CARD_W + (ARCHETYPES.length - 1) * CARD_GAP;

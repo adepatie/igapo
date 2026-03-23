@@ -1,6 +1,7 @@
 import type { RiverNode, EncounterNode } from "@igapo/shared";
 import { GameState } from "../systems/GameState";
 import { ENCOUNTERS } from "./encounterData";
+import { Codex } from "../systems/Codex";
 
 /**
  * Selects the appropriate encounter for a node given current game state.
@@ -12,12 +13,14 @@ export function selectEncounter(node: RiverNode, state: GameState): EncounterNod
     return ENCOUNTERS[node.encounterId];
   }
 
+  const totalRuns = Codex.load().totalRuns;
   const matching = node.encounterPool.filter((entry) => {
     const c = entry.conditions;
     if (!c) return true;
     if (c.timeOfDay && !c.timeOfDay.includes(state.timeOfDay)) return false;
     if (c.season && !c.season.includes(state.season)) return false;
     if (c.weather && !c.weather.includes(state.weather)) return false;
+    if (c.minRun !== undefined && totalRuns < c.minRun) return false;
     return true;
   });
 
