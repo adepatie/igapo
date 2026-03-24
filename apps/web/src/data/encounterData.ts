@@ -1,7 +1,50 @@
 import type { EncounterNode, EncounterChoice, EncounterOutcome, FieldNote } from "@igapo/shared";
 import { GameState } from "../systems/GameState";
 
-// --- Field Notes ---
+// --- World-state effects for encounter choices ---
+// scope "node" → effect targets the current map node
+// scope "region" → effect targets the current region
+// Used by EncounterEngine to record WorldEvents after choice resolution
+
+export interface ChoiceEffect {
+  attribute: string;
+  delta: number;
+  scope: "node" | "region";
+}
+
+export const CHOICE_WORLD_EFFECTS: Record<string, ChoiceEffect[]> = {
+  // human_village / human_village_return
+  accept_hospitality:   [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  ask_directly:         [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+
+  // human_extractivist
+  no_judgment:          [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  challenge:            [{ attribute: "community_trust", delta: -2, scope: "node" }],
+  dry_no_judgment:      [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  dry_document:         [{ attribute: "community_trust", delta: -1, scope: "node" }],
+
+  // human_trader
+  trader_trade:         [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  trader_news:          [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  dry_trade_accept:     [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  dry_trade_barter:     [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  night_trade:          [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+
+  // human_researcher
+  ask_research:         [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  ask_quiet_zones:      [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+
+  // human_ngo
+  ngo_speak_elder:      [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  ngo_engage:           [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+
+  // archetype bonus choices
+  _bonus_trust_intro:   [{ attribute: "community_trust", delta: 1,  scope: "node" }],
+  _bonus_run_clinic:    [
+    { attribute: "community_trust",   delta: 2, scope: "node" },
+    { attribute: "has_medical_history", delta: 1, scope: "node" },
+  ],
+};
 
 export const FIELD_NOTES_BY_ID: Record<string, FieldNote> = {};
 
@@ -612,6 +655,37 @@ export const ENCOUNTERS: Record<string, EncounterNode> = {
       { id: "ngo_observe", label: "Wait at the dock. Don't interrupt.", successChance: 1.0 },
       { id: "ngo_engage", label: "Introduce yourself to the team leader.", successChance: 1.0 },
       { id: "ngo_speak_elder", label: "Wait for the team to leave, then speak with the elder directly.", successChance: 0.8 },
+    ],
+  },
+
+  // ── World-state variants ───────────────────────────────────────────────────
+
+  // human_extractivist_challenged: fires when community_trust < -1 at this node
+  // (someone challenged the loggers before — they remember it)
+  human_extractivist_challenged: {
+    id: "human_extractivist_challenged",
+    title: "The Logging Camp",
+    type: "human",
+    arrivalText:
+      "The young man is already watching before you cut the engine. He recognises the boat — or recognises the type of person in it. He's on his feet before you've tied off. 'You again,' he says. It's not a greeting. Two others appear from behind the equipment shed. Someone has a radio.",
+    choices: [
+      { id: "no_judgment", label: "Keep it neutral. You need fuel, not a confrontation.", successChance: 1.0 },
+      { id: "challenge", label: "Hold your ground. You documented the zone number. They know that.", successChance: 0.4 },
+    ],
+  },
+
+  // human_trader_familiar: fires when visit_count >= 1 at this node
+  // (you've traded here before — the relationship has a small history)
+  human_trader_familiar: {
+    id: "human_trader_familiar",
+    title: "The Trading Boat",
+    type: "human",
+    arrivalText:
+      "The trader spots you fifty meters out and raises a hand — not a wave exactly, more an acknowledgment. By the time you've docked, he's already pulled out the things you bought last time. 'I remembered what you needed,' he says. 'Figured you'd be back.'",
+    choices: [
+      { id: "trader_trade", label: "Trade — he's already got the right supplies.", successChance: 1.0 },
+      { id: "trader_news", label: "Ask what he's heard upriver since you last spoke.", successChance: 1.0 },
+      { id: "trader_haggle", label: "He knows you now — try for a better price.", successChance: 0.75 },
     ],
   },
 };

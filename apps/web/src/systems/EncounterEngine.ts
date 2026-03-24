@@ -1,9 +1,35 @@
 import Phaser from "phaser";
-import type { EncounterNode, EncounterChoice, Resources } from "@igapo/shared";
+import type { EncounterNode, EncounterChoice, Resources, DerivedNodeState } from "@igapo/shared";
 import { GameState } from "./GameState";
-import { resolveOutcome, ENCOUNTERS } from "../data/encounterData";
+import { resolveOutcome, ENCOUNTERS, CHOICE_WORLD_EFFECTS } from "../data/encounterData";
 import { computeBonuses, applySuccessBonus, type ActiveBonuses } from "./BonusSystem";
 import { Codex } from "./Codex";
+
+// Table-driven world-state variant selection.
+// Variants are evaluated in order; first match wins.
+interface VariantMapping {
+  baseEncounterId: string;
+  variantId: string;
+  condition: (nodeState: DerivedNodeState | undefined) => boolean;
+}
+
+const WORLD_STATE_VARIANTS: VariantMapping[] = [
+  {
+    baseEncounterId: "human_village",
+    variantId: "human_village_return",
+    condition: (s) => s?.has_medical_history === true,
+  },
+  {
+    baseEncounterId: "human_extractivist",
+    variantId: "human_extractivist_challenged",
+    condition: (s) => (s?.community_trust ?? 0) < -1,
+  },
+  {
+    baseEncounterId: "human_trader",
+    variantId: "human_trader_familiar",
+    condition: (s) => (s?.visit_count ?? 0) >= 1,
+  },
+];
 
 const W_FRAC = 0.68;
 
@@ -76,10 +102,12 @@ export class EncounterEngine {
 
   create() {
     // ── World-state variant selection ─────────────────────────────────────
-    // Check derived node state and swap to a world-reactive encounter variant
     const nodeState = this.state.derivedNodeStates[this.state.currentNodeId];
-    if (nodeState?.has_medical_history && this.node.id === "human_village") {
-      this.node = ENCOUNTERS["human_village_return"] ?? this.node;
+    for (const mapping of WORLD_STATE_VARIANTS) {
+      if (this.node.id === mapping.baseEncounterId && mapping.condition(nodeState)) {
+        this.node = ENCOUNTERS[mapping.variantId] ?? this.node;
+        break;
+      }
     }
 
     const { width, height } = this.scene.scale;
@@ -274,6 +302,7 @@ export class EncounterEngine {
 
     // Bonus choice outcomes
     if (choice.id === "_bonus_careful_observe") {
+      this.recordChoiceEvent("_bonus_careful_observe", "success");
       this.showOutcomeText(panelW, panelH, {
         text: "You settle into methodical observation. The animal — whatever its initial wariness — adjusts to your presence. You document behavior that a faster approach would have disrupted.",
         resourceDelta: { morale: 8 },
@@ -282,6 +311,7 @@ export class EncounterEngine {
     }
     if (choice.id === "_bonus_press_further") {
       const success = Math.random() < adjustedChance;
+      this.recordChoiceEvent("_bonus_press_further", success ? "success" : "failure");
       this.showOutcomeText(panelW, panelH, {
         text: success
           ? "You read the hesitation correctly. There is more — and they tell you, carefully, in the way people tell things to someone they've decided they can probably trust."
@@ -291,6 +321,7 @@ export class EncounterEngine {
       return;
     }
     if (choice.id === "_bonus_trust_intro") {
+      this.recordChoiceEvent("_bonus_trust_intro", "success");
       this.showOutcomeText(panelW, panelH, {
         text: "The introduction lands. Your work is known here — or at least, the kind of work it is. The conversation that follows is longer and more honest than you expected.",
         resourceDelta: { morale: 10 },
@@ -299,27 +330,7 @@ export class EncounterEngine {
     }
     if (choice.id === "_bonus_run_clinic") {
       this.state.healedCommunities.add(this.node.id);
-      this.state.recordEvent({
-        nodeId: this.state.currentNodeId,
-        archetypeId: this.state.archetypeId,
-        eventType: "encounter_outcome",
-        encounterId: this.node.id,
-        choiceId: "_bonus_run_clinic",
-        outcome: "success",
-        effects: [
-          {
-            target: { type: "node", nodeId: this.state.currentNodeId },
-            attribute: "community_trust",
-            delta: 2,
-          },
-          {
-            target: { type: "node", nodeId: this.state.currentNodeId },
-            attribute: "has_medical_history",
-            delta: 1,
-          },
-        ],
-        tags: ["human", "medical", "positive_community"],
-      });
+      this.recordChoiceEvent("_bonus_run_clinic", "success");
       this.showOutcomeText(panelW, panelH, {
         text: "You set up a makeshift clinic for two hours. Wound care, rehydration salts, a child's fever reduced. You leave behind more than medicine — you leave behind an account of who you are. Word travels faster than boats on this river.",
         resourceDelta: { medicine: -15, morale: 20 },
@@ -328,6 +339,9 @@ export class EncounterEngine {
     }
 
     const outcome = resolveOutcome(adjustedChoice, this.state);
+
+    // Record world event for this choice (effects looked up from CHOICE_WORLD_EFFECTS)
+    this.recordChoiceEvent(choice.id, "neutral");
 
     // Storm morale penalty
     if (this.node.type === "navigation" && this.state.weather === "storm") {
@@ -448,6 +462,33 @@ export class EncounterEngine {
       .on("pointerout", () => continueBtn.setColor("#a8c89a"))
       .on("pointerdown", () => this.close());
     this.container.add(continueBtn);
+  }
+
+  // Records a WorldEvent for a resolved encounter choice.
+  // Looks up world-state effects from CHOICE_WORLD_EFFECTS; substitutes the
+  // current node/region into the target. Safe to call for any encounter type —
+  // choices absent from the map produce an event with no effects (still useful
+  // for building visit/encounter history).
+  private recordChoiceEvent(choiceId: string, outcome: "success" | "failure" | "neutral") {
+    const rawEffects = CHOICE_WORLD_EFFECTS[choiceId] ?? [];
+    const effects = rawEffects.map(e => ({
+      target: e.scope === "node"
+        ? { type: "node" as const, nodeId: this.state.currentNodeId }
+        : { type: "region" as const, regionId: this.state.season }, // placeholder — region support in later phase
+      attribute: e.attribute,
+      delta: e.delta,
+    }));
+
+    this.state.recordEvent({
+      nodeId: this.state.currentNodeId,
+      archetypeId: this.state.archetypeId,
+      eventType: "encounter_outcome",
+      encounterId: this.node.id,
+      choiceId,
+      outcome,
+      effects,
+      tags: [this.node.type],
+    });
   }
 
   private buildContextTag(): string | null {
