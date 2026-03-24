@@ -489,7 +489,7 @@ export class EncounterEngine {
     const effects = rawEffects.map(e => ({
       target: e.scope === "node"
         ? { type: "node" as const, nodeId: this.state.currentNodeId }
-        : { type: "region" as const, regionId: this.state.season }, // placeholder — region support in later phase
+        : { type: "region" as const, regionId: "várzea" as const }, // placeholder — real regionId populated when geography layer is active
       attribute: e.attribute,
       delta: e.delta,
     }));

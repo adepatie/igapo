@@ -132,7 +132,7 @@ describe("deriveNodeStates", () => {
   it("ignores region-scoped effects when computing node state", () => {
     const events: WorldEvent[] = [
       makeEvent({
-        effects: [{ target: { type: "region", regionId: "varzea" }, attribute: "outsider_disposition", delta: 5 }],
+        effects: [{ target: { type: "region", regionId: "várzea" }, attribute: "outsider_disposition", delta: 5 }],
       }),
     ];
     const result = deriveNodeStates(events, 0);
