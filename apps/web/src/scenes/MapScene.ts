@@ -79,6 +79,7 @@ export class MapScene extends Phaser.Scene {
       runId: this.state.runId,
       runCount: codex.totalRuns,
       crewManifest: available.map((cs) => cs.crewId),
+      runNodes: this.runNodes,
       missionObjective: seedMissionObjective(
         archetype.id,
         this.state.derivedState,

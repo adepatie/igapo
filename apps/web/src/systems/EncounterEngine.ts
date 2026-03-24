@@ -77,10 +77,17 @@ export class EncounterEngine {
 
   create() {
     // ── World-state variant selection (pre-compiled by WorldPopulationEngine) ─
+    // Look up by map node ID. Also verify assignedTemplateId matches the
+    // actual encounter selected (encounterPool may have picked a different
+    // template based on time/season/weather — don't swap in that case).
     const assignment = this.state.runManifest?.nodeManifest.find(
       (n) => n.nodeId === this.state.currentNodeId,
     );
-    if (assignment && assignment.assignedVariantId !== "default") {
+    if (
+      assignment &&
+      assignment.assignedVariantId !== "default" &&
+      this.node.id === assignment.assignedTemplateId
+    ) {
       this.node = ENCOUNTERS[assignment.assignedVariantId] ?? this.node;
     }
 

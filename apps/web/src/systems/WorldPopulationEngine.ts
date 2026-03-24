@@ -9,12 +9,12 @@
  * Rolling window same-run propagation deferred to a future pass.
  */
 
-import type { DerivedStateSnapshot } from "@igapo/shared";
+import type { DerivedStateSnapshot, RiverNode } from "@igapo/shared";
 import type { RunManifest, RunLocalCache, NodeAssignment, SegmentAssignment } from "@igapo/shared";
 import type { MissionObjective } from "@igapo/shared";
 import type { ArchetypeId } from "@igapo/shared";
 import { emptyRunLocalCache } from "@igapo/shared";
-import { ENCOUNTERS, resolveEncounterVariant } from "../data/encounterData";
+import { resolveEncounterVariant } from "../data/encounterData";
 
 // ── Compilation input ────────────────────────────────────────────────────────
 
@@ -25,9 +25,11 @@ export interface CompilationInput {
   runCount: number;
   crewManifest: string[];     // crew member IDs joining this run
   missionObjective: MissionObjective | null;
+  /** Run map nodes — required to correctly map node IDs to encounter template IDs. */
+  runNodes: RiverNode[];
 }
 
-// ── Compilation pass (stub) ──────────────────────────────────────────────────
+// ── Compilation pass ─────────────────────────────────────────────────────────
 
 /**
  * Produces a RunManifest for the current run.
@@ -38,15 +40,19 @@ export interface CompilationInput {
  * at encounter-presentation time.
  */
 export function compile(input: CompilationInput): RunManifest {
-  const nodeManifest: NodeAssignment[] = Object.keys(ENCOUNTERS).map((encId) => {
-    const nodeState = input.derivedState.nodes[encId];
+  // Keyed by map node ID. derivedState.nodes is also keyed by map node ID,
+  // so lookups match correctly. EncounterEngine uses currentNodeId (map node ID)
+  // to retrieve assignments, and assignedTemplateId guards against pool selection.
+  const nodeManifest: NodeAssignment[] = input.runNodes.map((node) => {
+    const nodeState = input.derivedState.nodes[node.id];
+    const assignedVariantId = resolveEncounterVariant(node.encounterId, nodeState);
     return {
-      nodeId: encId,
-      assignedTemplateId: encId,
-      assignedVariantId: resolveEncounterVariant(encId, nodeState),
+      nodeId: node.id,                     // map node ID — matches state.currentNodeId
+      assignedTemplateId: node.encounterId, // primary encounter template this was compiled for
+      assignedVariantId,
       isCompiled: true,
-      isMissionObjective: input.missionObjective?.nodeId === encId,
-      hasIntelHint: input.missionObjective?.intelNodeIds.includes(encId) ?? false,
+      isMissionObjective: input.missionObjective?.nodeId === node.id,
+      hasIntelHint: input.missionObjective?.intelNodeIds.includes(node.id) ?? false,
       intelHintText: undefined,
     };
   });

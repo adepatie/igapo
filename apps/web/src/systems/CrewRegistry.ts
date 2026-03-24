@@ -4,9 +4,8 @@
  * Persistent store for crew records. Manages cross-run crew state:
  * availability, relationship history, trust derivation, and join conditions.
  *
- * STUB: Initializes from the existing CREW_POOL definitions.
- * Persistence is wired up but relationship history is not yet accumulated
- * (that requires run_end integration in Codex.recordRun).
+ * Initializes from CREW_POOL on first run. Relationship history is accumulated
+ * at run end via Codex.recordRun() → CrewRegistry.recordRunEnd().
  */
 
 import type { ArchetypeId } from "@igapo/shared";
