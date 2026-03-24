@@ -244,6 +244,29 @@ export const ENCOUNTERS: Record<string, EncounterNode> = {
     ],
   },
 
+  // World-state variant: fires when has_medical_history is true for this node
+  human_village_return: {
+    id: "human_village_return",
+    title: "Vila Ribeirinha",
+    type: "human",
+    arrivalText:
+      "The dock looks familiar. Someone has repaired the railing that was broken when you were last here. A child runs inside before you've finished tying off — you hear the word spreading through the settlement. By the time you climb the bank, the elder is already standing. He doesn't open one eye this time. He opens both. 'I wondered if you'd come back.'",
+    choices: [
+      {
+        id: "accept_hospitality",
+        label: "Accept his invitation. Sit and listen.",
+        requiresFieldNote: undefined,
+        successChance: 1.0,
+      },
+      {
+        id: "ask_directly",
+        label: "Ask directly about the upper river and what's changed.",
+        requiresFieldNote: undefined,
+        successChance: 0.6,
+      },
+    ],
+  },
+
   human_extractivist: {
     id: "human_extractivist",
     title: "The Logging Camp",

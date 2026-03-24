@@ -15,6 +15,7 @@ vi.mock("../systems/Codex", () => ({
       medicHealedCommunities: [],
       correspondentTipsTotal: 0,
     })),
+    loadEvents: vi.fn(() => ({ events: [], nextEventIndex: 0 })),
   },
 }));
 

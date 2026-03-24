@@ -1,7 +1,17 @@
-import type { FieldNote } from "@igapo/shared";
+import type { FieldNote, WorldEvent } from "@igapo/shared";
 import { GameState } from "./GameState";
 
 const STORAGE_KEY = "varzea_codex_v1";
+const EVENTS_KEY = "varzea_events_v1";
+
+interface EventLogStore {
+  events: WorldEvent[];
+  nextEventIndex: number;
+}
+
+function emptyEventLog(): EventLogStore {
+  return { events: [], nextEventIndex: 0 };
+}
 
 // Meta-narrative fragments triggered by specific encounter choice IDs
 // These are choice IDs (tracked in state.codexEntries), not node IDs
@@ -118,6 +128,9 @@ export const Codex = {
     }
 
     this.save(codex);
+
+    // Append this run's world events to the persistent event log
+    this.appendEvents(state.runEvents);
   },
 
   getNotesSummary(): { id: string; species: string }[] {
@@ -127,6 +140,31 @@ export const Codex = {
 
   reset() {
     localStorage.removeItem(STORAGE_KEY);
+  },
+
+  loadEvents(): EventLogStore {
+    try {
+      const raw = localStorage.getItem(EVENTS_KEY);
+      return raw ? { ...emptyEventLog(), ...JSON.parse(raw) } : emptyEventLog();
+    } catch {
+      return emptyEventLog();
+    }
+  },
+
+  appendEvents(newEvents: WorldEvent[]) {
+    if (newEvents.length === 0) return;
+    try {
+      const store = this.loadEvents();
+      store.events.push(...newEvents);
+      store.nextEventIndex += newEvents.length;
+      localStorage.setItem(EVENTS_KEY, JSON.stringify(store));
+    } catch {
+      // localStorage unavailable — silent fail
+    }
+  },
+
+  resetEvents() {
+    localStorage.removeItem(EVENTS_KEY);
   },
 };
 

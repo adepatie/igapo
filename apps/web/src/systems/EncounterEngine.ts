@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import type { EncounterNode, EncounterChoice, Resources } from "@igapo/shared";
 import { GameState } from "./GameState";
-import { resolveOutcome } from "../data/encounterData";
+import { resolveOutcome, ENCOUNTERS } from "../data/encounterData";
 import { computeBonuses, applySuccessBonus, type ActiveBonuses } from "./BonusSystem";
 import { Codex } from "./Codex";
 
@@ -75,6 +75,13 @@ export class EncounterEngine {
   }
 
   create() {
+    // ── World-state variant selection ─────────────────────────────────────
+    // Check derived node state and swap to a world-reactive encounter variant
+    const nodeState = this.state.derivedNodeStates[this.state.currentNodeId];
+    if (nodeState?.has_medical_history && this.node.id === "human_village") {
+      this.node = ENCOUNTERS["human_village_return"] ?? this.node;
+    }
+
     const { width, height } = this.scene.scale;
     const panelW = width * W_FRAC;
     const panelH = height * 0.82;
@@ -292,6 +299,27 @@ export class EncounterEngine {
     }
     if (choice.id === "_bonus_run_clinic") {
       this.state.healedCommunities.add(this.node.id);
+      this.state.recordEvent({
+        nodeId: this.state.currentNodeId,
+        archetypeId: this.state.archetypeId,
+        eventType: "encounter_outcome",
+        encounterId: this.node.id,
+        choiceId: "_bonus_run_clinic",
+        outcome: "success",
+        effects: [
+          {
+            target: { type: "node", nodeId: this.state.currentNodeId },
+            attribute: "community_trust",
+            delta: 2,
+          },
+          {
+            target: { type: "node", nodeId: this.state.currentNodeId },
+            attribute: "has_medical_history",
+            delta: 1,
+          },
+        ],
+        tags: ["human", "medical", "positive_community"],
+      });
       this.showOutcomeText(panelW, panelH, {
         text: "You set up a makeshift clinic for two hours. Wound care, rehydration salts, a child's fever reduced. You leave behind more than medicine — you leave behind an account of who you are. Word travels faster than boats on this river.",
         resourceDelta: { medicine: -15, morale: 20 },

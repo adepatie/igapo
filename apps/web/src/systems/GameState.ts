@@ -1,6 +1,7 @@
-import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype } from "@igapo/shared";
+import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype, WorldEvent, DerivedNodeState } from "@igapo/shared";
 import { FIELD_NOTES_BY_ID } from "../data/encounterData";
 import { Codex } from "./Codex";
+import { deriveNodeStates } from "./DerivationLayer";
 
 export class GameState {
   resources: Resources;
@@ -36,11 +37,18 @@ export class GameState {
   // Correspondent: node IDs that have radio intel this run (for map tooltip)
   radioTipNodeIds: Set<string> = new Set();
 
+  // ── World event log ───────────────────────────────────────────────────────
+  runId: number = 0;
+  runEvents: WorldEvent[] = [];
+  derivedNodeStates: Record<string, DerivedNodeState> = {};
+  private _nextEventIdx: number = 0;
+
   constructor(archetype: Archetype) {
     this.archetypeId = archetype.id;
     // Season alternates: even runs = wet (floods high, dolphins upriver), odd runs = dry (sandbanks, piranhas)
     // With a small random override so not perfectly predictable
-    const runCount = Codex.load().totalRuns;
+    const codex = Codex.load();
+    const runCount = codex.totalRuns;
     this.season = (runCount % 2 === 0 || Math.random() < 0.25) ? "wet" : "dry";
     this.resources = {
       fuel: archetype.startingResources.fuel ?? 100,
@@ -53,6 +61,22 @@ export class GameState {
       const note = FIELD_NOTES_BY_ID[id];
       if (note) this.addFieldNote(note);
     }
+
+    // Load world event log and derive node states for this run
+    const eventStore = Codex.loadEvents();
+    this.runId = runCount;
+    this._nextEventIdx = eventStore.nextEventIndex;
+    this.derivedNodeStates = deriveNodeStates(eventStore.events, this.runId);
+  }
+
+  recordEvent(partial: Omit<WorldEvent, "id" | "runId" | "turn">): void {
+    const event: WorldEvent = {
+      ...partial,
+      id: `evt_${String(this._nextEventIdx++).padStart(5, "0")}`,
+      runId: this.runId,
+      turn: this.moveCount,
+    };
+    this.runEvents.push(event);
   }
 
   hasFieldNote(id: string): boolean {
@@ -70,6 +94,13 @@ export class GameState {
     this.visitedNodeIds.add(id);
     this.currentNodeId = id;
     this.moveCount++;
+    this.recordEvent({
+      nodeId: id,
+      archetypeId: this.archetypeId,
+      eventType: "node_visited",
+      effects: [],
+      tags: ["node_visited"],
+    });
   }
 
   revealNode(id: string) {
