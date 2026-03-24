@@ -5,9 +5,8 @@
  * and the Event Log's derived state, evaluates the Encounter Template Library,
  * and produces a RunManifest — the concrete encounter assignment for this run.
  *
- * STUB: Currently wraps the legacy encounterSelector behavior.
- * Full compilation pass (preconditions, rolling window, same-run propagation)
- * to be implemented when the scrolling river view is in place.
+ * Pre-compiles encounter variant selection at run start using derived world state.
+ * Rolling window same-run propagation deferred to a future pass.
  */
 
 import type { DerivedStateSnapshot } from "@igapo/shared";
@@ -15,7 +14,7 @@ import type { RunManifest, RunLocalCache, NodeAssignment, SegmentAssignment } fr
 import type { MissionObjective } from "@igapo/shared";
 import type { ArchetypeId } from "@igapo/shared";
 import { emptyRunLocalCache } from "@igapo/shared";
-import { ENCOUNTERS } from "../data/encounterData";
+import { ENCOUNTERS, resolveEncounterVariant } from "../data/encounterData";
 
 // ── Compilation input ────────────────────────────────────────────────────────
 
@@ -33,21 +32,24 @@ export interface CompilationInput {
 /**
  * Produces a RunManifest for the current run.
  *
- * Stub behavior: creates a shallow manifest from the static 17-node map.
- * Each node gets a placeholder assignment pointing to the legacy encounter IDs.
- * WORLD_STATE_VARIANTS evaluation still happens at encounter-presentation time
- * in EncounterEngine until full pre-compilation is implemented.
+ * Evaluates WORLD_STATE_VARIANTS conditions against the derived world state for
+ * each node, pre-compiling the encounter variant selection. EncounterEngine reads
+ * the assignedVariantId from the manifest rather than re-evaluating conditions
+ * at encounter-presentation time.
  */
 export function compile(input: CompilationInput): RunManifest {
-  const nodeManifest: NodeAssignment[] = Object.keys(ENCOUNTERS).map((encId) => ({
-    nodeId: encId,                 // legacy: nodeId === encounterId in static map
-    assignedTemplateId: encId,
-    assignedVariantId: "default",  // variant selection still handled by EncounterEngine
-    isCompiled: true,
-    isMissionObjective: input.missionObjective?.nodeId === encId,
-    hasIntelHint: input.missionObjective?.intelNodeIds.includes(encId) ?? false,
-    intelHintText: undefined,
-  }));
+  const nodeManifest: NodeAssignment[] = Object.keys(ENCOUNTERS).map((encId) => {
+    const nodeState = input.derivedState.nodes[encId];
+    return {
+      nodeId: encId,
+      assignedTemplateId: encId,
+      assignedVariantId: resolveEncounterVariant(encId, nodeState),
+      isCompiled: true,
+      isMissionObjective: input.missionObjective?.nodeId === encId,
+      hasIntelHint: input.missionObjective?.intelNodeIds.includes(encId) ?? false,
+      intelHintText: undefined,
+    };
+  });
 
   const segmentManifest: SegmentAssignment[] = []; // populated when river segments exist
 

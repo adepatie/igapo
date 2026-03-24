@@ -1,4 +1,4 @@
-import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype, WorldEvent, DerivedStateSnapshot } from "@igapo/shared";
+import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype, WorldEvent, DerivedStateSnapshot, RunManifest } from "@igapo/shared";
 import { FIELD_NOTES_BY_ID } from "../data/encounterData";
 import { Codex } from "./Codex";
 import { deriveStateSnapshot } from "./DerivationLayer";
@@ -40,6 +40,7 @@ export class GameState {
   runId: number = 0;
   runEvents: WorldEvent[] = [];
   derivedState!: DerivedStateSnapshot;
+  runManifest!: RunManifest;
   private _nextEventIdx: number = 0;
 
   constructor(archetype: Archetype) {

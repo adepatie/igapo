@@ -1,5 +1,6 @@
-import type { FieldNote, WorldEvent } from "@igapo/shared";
+import type { FieldNote, WorldEvent, ArchetypeId, RunOutcome } from "@igapo/shared";
 import { GameState } from "./GameState";
+import { CrewRegistry } from "./CrewRegistry";
 
 const STORAGE_KEY = "varzea_codex_v1";
 const EVENTS_KEY = "varzea_events_v1";
@@ -138,6 +139,20 @@ export const Codex = {
       tags: ["run_end"],
     });
     this.appendEvents(state.runEvents);
+
+    // Persist crew relationship history for this run
+    const outcome: RunOutcome = state.currentNodeId === "destination" ? "success" : "pullout";
+    const moraleEnds: Record<string, number> = {};
+    for (const m of state.crew) moraleEnds[m.id] = state.resources.morale;
+    CrewRegistry.recordRunEnd(
+      state.crew.map((m) => m.id),
+      state.archetypeId as ArchetypeId,
+      state.runId,
+      {}, // trustDeltas — per-crew trust tracking not yet wired
+      moraleEnds,
+      outcome,
+      state.currentNodeId,
+    );
   },
 
   getNotesSummary(): { id: string; species: string }[] {

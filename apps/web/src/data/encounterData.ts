@@ -1,4 +1,4 @@
-import type { EncounterNode, EncounterChoice, EncounterOutcome, FieldNote } from "@igapo/shared";
+import type { EncounterNode, EncounterChoice, EncounterOutcome, FieldNote, DerivedNodeState } from "@igapo/shared";
 import { GameState } from "../systems/GameState";
 
 // --- World-state effects for encounter choices ---
@@ -1347,4 +1347,67 @@ function defaultOutcome(success: boolean): EncounterOutcome {
       : "Something goes wrong. Resources are lost.",
     resourceDelta: success ? {} : { equipment: -10 },
   };
+}
+
+// ── World-state variant selection table ──────────────────────────────────────
+//
+// Evaluated at run-start by the World Population Engine to pre-assign encounter
+// variants based on accumulated world state. EncounterEngine reads the
+// pre-compiled assignedVariantId from the RunManifest instead of re-evaluating.
+// Variants are evaluated in order; first match wins.
+
+interface VariantMapping {
+  baseEncounterId: string;
+  variantId: string;
+  condition: (nodeState: DerivedNodeState | undefined) => boolean;
+}
+
+export const WORLD_STATE_VARIANTS: VariantMapping[] = [
+  {
+    baseEncounterId: "human_village",
+    variantId: "human_village_return",
+    condition: (s) => s?.has_medical_history === true,
+  },
+  {
+    baseEncounterId: "human_extractivist",
+    variantId: "human_extractivist_challenged",
+    condition: (s) => (s?.community_trust ?? 0) < -1,
+  },
+  {
+    baseEncounterId: "human_trader",
+    variantId: "human_trader_familiar",
+    condition: (s) => (s?.visit_count ?? 0) >= 1,
+  },
+  {
+    baseEncounterId: "wildlife_caiman",
+    variantId: "wildlife_caiman_known_route",
+    condition: (s) => (s?.visit_count ?? 0) >= 1,
+  },
+  {
+    baseEncounterId: "wildlife_boto",
+    variantId: "wildlife_boto_curious",
+    condition: (s) => (s?.ecological_health ?? 0) >= 1,
+  },
+  {
+    baseEncounterId: "nav_blackwater",
+    variantId: "nav_blackwater_charted",
+    condition: (s) => (s?.visit_count ?? 0) >= 1,
+  },
+];
+
+/**
+ * Resolves which variant of an encounter should be presented given current
+ * world state at a node. Returns the variantId of the first matching rule,
+ * or "default" if no variant applies.
+ */
+export function resolveEncounterVariant(
+  encounterId: string,
+  nodeState: DerivedNodeState | undefined,
+): string {
+  for (const mapping of WORLD_STATE_VARIANTS) {
+    if (encounterId === mapping.baseEncounterId && mapping.condition(nodeState)) {
+      return mapping.variantId;
+    }
+  }
+  return "default";
 }

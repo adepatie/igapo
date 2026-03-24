@@ -70,10 +70,10 @@ export class MapScene extends Phaser.Scene {
     this.runNodes = run.nodes;
     this.runEdges = run.edges;
 
-    // WorldPopulationEngine compilation pass (stub — manifest not yet used for
-    // encounter selection; WORLD_STATE_VARIANTS still evaluated in EncounterEngine)
+    // WorldPopulationEngine compilation pass — pre-compiles encounter variant
+    // selection for this run based on accumulated world state
     const codex = Codex.load();
-    compileRunManifest({
+    this.state.runManifest = compileRunManifest({
       archetypeId: archetype.id,
       derivedState: this.state.derivedState,
       runId: this.state.runId,

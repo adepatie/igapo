@@ -1,50 +1,10 @@
 import Phaser from "phaser";
-import type { EncounterNode, EncounterChoice, Resources, DerivedNodeState } from "@igapo/shared";
+import type { EncounterNode, EncounterChoice, Resources } from "@igapo/shared";
 import { GameState } from "./GameState";
 import { resolveOutcome, ENCOUNTERS, CHOICE_WORLD_EFFECTS } from "../data/encounterData";
 import { computeBonuses, applySuccessBonus, type ActiveBonuses } from "./BonusSystem";
 import { Codex } from "./Codex";
 
-// Table-driven world-state variant selection.
-// Variants are evaluated in order; first match wins.
-interface VariantMapping {
-  baseEncounterId: string;
-  variantId: string;
-  condition: (nodeState: DerivedNodeState | undefined) => boolean;
-}
-
-const WORLD_STATE_VARIANTS: VariantMapping[] = [
-  {
-    baseEncounterId: "human_village",
-    variantId: "human_village_return",
-    condition: (s) => s?.has_medical_history === true,
-  },
-  {
-    baseEncounterId: "human_extractivist",
-    variantId: "human_extractivist_challenged",
-    condition: (s) => (s?.community_trust ?? 0) < -1,
-  },
-  {
-    baseEncounterId: "human_trader",
-    variantId: "human_trader_familiar",
-    condition: (s) => (s?.visit_count ?? 0) >= 1,
-  },
-  {
-    baseEncounterId: "wildlife_caiman",
-    variantId: "wildlife_caiman_known_route",
-    condition: (s) => (s?.visit_count ?? 0) >= 1,
-  },
-  {
-    baseEncounterId: "wildlife_boto",
-    variantId: "wildlife_boto_curious",
-    condition: (s) => (s?.ecological_health ?? 0) >= 1,
-  },
-  {
-    baseEncounterId: "nav_blackwater",
-    variantId: "nav_blackwater_charted",
-    condition: (s) => (s?.visit_count ?? 0) >= 1,
-  },
-];
 
 const W_FRAC = 0.68;
 
@@ -116,13 +76,12 @@ export class EncounterEngine {
   }
 
   create() {
-    // ── World-state variant selection ─────────────────────────────────────
-    const nodeState = this.state.derivedState.nodes[this.state.currentNodeId];
-    for (const mapping of WORLD_STATE_VARIANTS) {
-      if (this.node.id === mapping.baseEncounterId && mapping.condition(nodeState)) {
-        this.node = ENCOUNTERS[mapping.variantId] ?? this.node;
-        break;
-      }
+    // ── World-state variant selection (pre-compiled by WorldPopulationEngine) ─
+    const assignment = this.state.runManifest?.nodeManifest.find(
+      (n) => n.nodeId === this.state.currentNodeId,
+    );
+    if (assignment && assignment.assignedVariantId !== "default") {
+      this.node = ENCOUNTERS[assignment.assignedVariantId] ?? this.node;
     }
 
     const { width, height } = this.scene.scale;
