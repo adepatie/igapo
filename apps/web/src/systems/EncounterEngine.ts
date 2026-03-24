@@ -29,6 +29,21 @@ const WORLD_STATE_VARIANTS: VariantMapping[] = [
     variantId: "human_trader_familiar",
     condition: (s) => (s?.visit_count ?? 0) >= 1,
   },
+  {
+    baseEncounterId: "wildlife_caiman",
+    variantId: "wildlife_caiman_known_route",
+    condition: (s) => (s?.visit_count ?? 0) >= 1,
+  },
+  {
+    baseEncounterId: "wildlife_boto",
+    variantId: "wildlife_boto_curious",
+    condition: (s) => (s?.ecological_health ?? 0) >= 1,
+  },
+  {
+    baseEncounterId: "nav_blackwater",
+    variantId: "nav_blackwater_charted",
+    condition: (s) => (s?.visit_count ?? 0) >= 1,
+  },
 ];
 
 const W_FRAC = 0.68;

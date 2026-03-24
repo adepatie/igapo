@@ -139,4 +139,60 @@ describe("deriveNodeStates", () => {
     // node_a gets created with defaults from the event's nodeId, but no region effect on it
     expect(result["node_a"]?.community_trust ?? 0).toBeCloseTo(0, 5);
   });
+
+  it("accumulates ecological_health from observation effects", () => {
+    const events: WorldEvent[] = [
+      makeEvent({
+        runId: 0,
+        effects: [{ target: { type: "node", nodeId: "node_a" }, attribute: "ecological_health", delta: 1 }],
+      }),
+      makeEvent({
+        runId: 0,
+        effects: [{ target: { type: "node", nodeId: "node_a" }, attribute: "ecological_health", delta: 1 }],
+      }),
+    ];
+    const result = deriveNodeStates(events, 0);
+    expect(result["node_a"].ecological_health).toBeCloseTo(2, 5);
+  });
+
+  it("applies 20% decay per run to ecological_health", () => {
+    const events: WorldEvent[] = [
+      makeEvent({
+        runId: 0,
+        effects: [{ target: { type: "node", nodeId: "node_a" }, attribute: "ecological_health", delta: 5 }],
+      }),
+    ];
+    const result = deriveNodeStates(events, 2);
+    expect(result["node_a"].ecological_health).toBeCloseTo(5 * Math.pow(0.8, 2), 5);
+  });
+
+  it("clamps ecological_health to +10 maximum", () => {
+    const events: WorldEvent[] = [
+      makeEvent({
+        runId: 0,
+        effects: [{ target: { type: "node", nodeId: "node_a" }, attribute: "ecological_health", delta: 100 }],
+      }),
+    ];
+    const result = deriveNodeStates(events, 0);
+    expect(result["node_a"].ecological_health).toBe(10);
+  });
+
+  it("clamps ecological_health to 0 minimum (no negative observations)", () => {
+    const events: WorldEvent[] = [
+      makeEvent({
+        runId: 0,
+        effects: [{ target: { type: "node", nodeId: "node_a" }, attribute: "ecological_health", delta: -100 }],
+      }),
+    ];
+    const result = deriveNodeStates(events, 0);
+    expect(result["node_a"].ecological_health).toBe(0);
+  });
+
+  it("defaults ecological_health to 0 for a node with no observation events", () => {
+    const events: WorldEvent[] = [
+      makeEvent({ eventType: "node_visited", nodeId: "node_a" }),
+    ];
+    const result = deriveNodeStates(events, 0);
+    expect(result["node_a"].ecological_health).toBe(0);
+  });
 });

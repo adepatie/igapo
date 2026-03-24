@@ -20,6 +20,7 @@ export function deriveNodeStates(
         community_trust: 0,
         visit_count: 0,
         has_medical_history: false,
+        ecological_health: 0,
       };
     }
     return states[nodeId];
@@ -46,12 +47,20 @@ export function deriveNodeStates(
       if (effect.attribute === "has_medical_history" && effect.delta > 0) {
         target.has_medical_history = true;
       }
+
+      if (effect.attribute === "ecological_health") {
+        // Same 20% decay as community_trust; only positive deltas recorded (observations)
+        const runsElapsed = Math.max(0, currentRunId - event.runId);
+        const decayed = effect.delta * Math.pow(0.8, runsElapsed);
+        target.ecological_health += decayed;
+      }
     }
   }
 
-  // Clamp community_trust to [-10, +10]
+  // Clamp derived numerics
   for (const s of Object.values(states)) {
     s.community_trust = Math.max(-10, Math.min(10, s.community_trust));
+    s.ecological_health = Math.max(0, Math.min(10, s.ecological_health));
   }
 
   return states;

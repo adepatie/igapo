@@ -44,6 +44,19 @@ export const CHOICE_WORLD_EFFECTS: Record<string, ChoiceEffect[]> = {
     { attribute: "community_trust",   delta: 2, scope: "node" },
     { attribute: "has_medical_history", delta: 1, scope: "node" },
   ],
+
+  // wildlife observation choices — boost ecological_health at this node
+  observe_quietly:      [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  observe_boto:         [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  observe_harpy:        [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  hold_position:        [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  anaconda_observe:     [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  arapaima_observe:     [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  jaguar_observe:       [{ attribute: "ecological_health", delta: 2, scope: "node" }], // apex
+  owl_observe:          [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  owl_record:           [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  morpho_observe:       [{ attribute: "ecological_health", delta: 1, scope: "node" }],
+  capybara_observe:     [{ attribute: "ecological_health", delta: 1, scope: "node" }],
 };
 
 export const FIELD_NOTES_BY_ID: Record<string, FieldNote> = {};
@@ -686,6 +699,79 @@ export const ENCOUNTERS: Record<string, EncounterNode> = {
       { id: "trader_trade", label: "Trade — he's already got the right supplies.", successChance: 1.0 },
       { id: "trader_news", label: "Ask what he's heard upriver since you last spoke.", successChance: 1.0 },
       { id: "trader_haggle", label: "He knows you now — try for a better price.", successChance: 0.75 },
+    ],
+  },
+
+  // wildlife_caiman_known_route: fires when visit_count >= 1
+  // (you've navigated this bank before — the caimans' usual positions are known)
+  wildlife_caiman_known_route: {
+    id: "wildlife_caiman_known_route",
+    title: "Caiman Banks",
+    type: "wildlife",
+    arrivalText:
+      "You know this mudflat. The big one — four meters, the one that never moved from the left bank — is in its usual position. You remember exactly where the channel clears. The engine noise doesn't concern them the way it did the first time.",
+    choices: [
+      {
+        id: "observe_quietly",
+        label: "Cut the engine. The big one is worth documenting again.",
+        successChance: 0.95,
+      },
+      {
+        id: "navigate_through",
+        label: "You know the gap. Navigate through — you've done this before.",
+        successChance: 0.85,
+      },
+      {
+        id: "disturbance_technique",
+        label: "Create a disturbance to clear the channel — mimic a mob scenario.",
+        requiresFieldNote: "otter_mob",
+        successChance: 0.9,
+      },
+    ],
+  },
+
+  // wildlife_boto_curious: fires when ecological_health >= 1
+  // (the botos here have been observed respectfully — they approach more readily)
+  wildlife_boto_curious: {
+    id: "wildlife_boto_curious",
+    title: "Flooded Forest at Dusk",
+    type: "wildlife",
+    arrivalText:
+      "The pink shapes appear before you've cut the engine — three botos, already moving toward the hull. They surface close, closer than last time: within reach, if you reached. Whatever calculation they make about boats, yours has changed. One rolls to present its flank, holding the position.",
+    choices: [
+      {
+        id: "follow_boto",
+        label: "Follow them — they came to you this time.",
+        successChance: 0.9,
+      },
+      {
+        id: "observe_boto",
+        label: "Stay completely still. Let them show you what they want to show you.",
+        successChance: 1.0,
+      },
+    ],
+  },
+
+  // nav_blackwater_charted: fires when visit_count >= 1
+  // (you've run this tributary before — you know where the engine struggles)
+  nav_blackwater_charted: {
+    id: "nav_blackwater_charted",
+    title: "The Dark Tributary",
+    type: "navigation",
+    arrivalText:
+      "The water shifts to dark tea again. You know this one. You remember exactly where the engine sputtered — at the bend where the tannin concentration spikes. You already flushed the fuel line before entering.",
+    choices: [
+      {
+        id: "proceed_carefully",
+        label: "Move through at normal pace. You know the trouble spots.",
+        successChance: 0.9,
+      },
+      {
+        id: "proceed_knowledgeable",
+        label: "Run it clean — flush the fuel line early and hold speed through the deep section.",
+        requiresFieldNote: "boto_navigation",
+        successChance: 0.99,
+      },
     ],
   },
 };

@@ -34,4 +34,5 @@ export interface DerivedNodeState {
   community_trust: number;
   visit_count: number;
   has_medical_history: boolean;
+  ecological_health: number;  // clamped 0 to +10; decays 20%/run; boosted by wildlife observation
 }
