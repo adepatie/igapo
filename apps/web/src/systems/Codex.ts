@@ -129,7 +129,14 @@ export const Codex = {
 
     this.save(codex);
 
-    // Append this run's world events to the persistent event log
+    // Write the terminal run_end event, then append all run events to the persistent log
+    state.recordEvent({
+      nodeId: state.currentNodeId,
+      archetypeId: state.archetypeId,
+      eventType: "run_end",
+      effects: [],
+      tags: ["run_end"],
+    });
     this.appendEvents(state.runEvents);
   },
 
