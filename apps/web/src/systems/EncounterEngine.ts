@@ -117,7 +117,7 @@ export class EncounterEngine {
 
   create() {
     // ── World-state variant selection ─────────────────────────────────────
-    const nodeState = this.state.derivedNodeStates[this.state.currentNodeId];
+    const nodeState = this.state.derivedState.nodes[this.state.currentNodeId];
     for (const mapping of WORLD_STATE_VARIANTS) {
       if (this.node.id === mapping.baseEncounterId && mapping.condition(nodeState)) {
         this.node = ENCOUNTERS[mapping.variantId] ?? this.node;

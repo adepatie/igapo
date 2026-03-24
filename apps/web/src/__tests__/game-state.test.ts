@@ -129,13 +129,6 @@ describe("GameState", () => {
     });
   });
 
-  describe("revealNode", () => {
-    it("adds to revealedNodeIds", () => {
-      state.revealNode("caiman_bank");
-      expect(state.revealedNodeIds.has("caiman_bank")).toBe(true);
-    });
-  });
-
   describe("addFieldNote", () => {
     const note = { id: "test_note", species: "Test Species", text: "A test note." };
 

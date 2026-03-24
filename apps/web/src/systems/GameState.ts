@@ -1,7 +1,7 @@
-import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype, WorldEvent, DerivedNodeState } from "@igapo/shared";
+import type { Resources, CrewMember, FieldNote, Season, TimeOfDay, Weather, Archetype, WorldEvent, DerivedStateSnapshot } from "@igapo/shared";
 import { FIELD_NOTES_BY_ID } from "../data/encounterData";
 import { Codex } from "./Codex";
-import { deriveNodeStates } from "./DerivationLayer";
+import { deriveStateSnapshot } from "./DerivationLayer";
 
 export class GameState {
   resources: Resources;
@@ -15,7 +15,6 @@ export class GameState {
 
   currentNodeId: string = "start";
   visitedNodeIds: Set<string> = new Set(["start"]);
-  revealedNodeIds: Set<string> = new Set(["start"]);
 
   fieldNotes: FieldNote[] = [];
   unlockedFieldNoteIds: Set<string> = new Set();
@@ -40,7 +39,7 @@ export class GameState {
   // ── World event log ───────────────────────────────────────────────────────
   runId: number = 0;
   runEvents: WorldEvent[] = [];
-  derivedNodeStates: Record<string, DerivedNodeState> = {};
+  derivedState!: DerivedStateSnapshot;
   private _nextEventIdx: number = 0;
 
   constructor(archetype: Archetype) {
@@ -62,11 +61,11 @@ export class GameState {
       if (note) this.addFieldNote(note);
     }
 
-    // Load world event log and derive node states for this run
+    // Load world event log and derive full state snapshot for this run
     const eventStore = Codex.loadEvents();
     this.runId = runCount;
     this._nextEventIdx = eventStore.nextEventIndex;
-    this.derivedNodeStates = deriveNodeStates(eventStore.events, this.runId);
+    this.derivedState = deriveStateSnapshot(eventStore.events, this.runId);
   }
 
   recordEvent(partial: Omit<WorldEvent, "id" | "runId" | "turn">): void {
@@ -101,10 +100,6 @@ export class GameState {
       effects: [],
       tags: ["node_visited"],
     });
-  }
-
-  revealNode(id: string) {
-    this.revealedNodeIds.add(id);
   }
 
   advanceTime() {
