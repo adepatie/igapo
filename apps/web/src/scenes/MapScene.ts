@@ -29,10 +29,9 @@ export class MapScene extends Phaser.Scene {
   private runNodes: RiverNode[] = [];
   private runEdges: RiverEdge[] = [];
 
-  // River parallax offsets (accumulated over time during travel)
-  private treeOffsetX = 0;
-  private waterOffsetX = 0;
-  private bankOffsetX = 0;
+  // Perspective scroll offset (0–1, drives all river animation)
+  // Advances fast during travel, slow when idle (ambient current)
+  private perspectiveScroll = 0;
 
   // Movement state machine
   private movementState: RiverMovementState = "STOPPED";
@@ -92,11 +91,12 @@ export class MapScene extends Phaser.Scene {
     const { width, height } = this.scale;
     this.input.once("pointerdown", () => ambientSound.start());
 
-    // River view layers (depth 0–3, drawn bottom to top each frame)
+    // River view layers — perspective ordering:
+    //   sky(0) → banks(1) → water(2) → trees(3, overlaps sky at horizon)
     this.skyGfx   = this.add.graphics().setDepth(0);
-    this.treeGfx  = this.add.graphics().setDepth(1);
+    this.bankGfx  = this.add.graphics().setDepth(1);
     this.waterGfx = this.add.graphics().setDepth(2);
-    this.bankGfx  = this.add.graphics().setDepth(3);
+    this.treeGfx  = this.add.graphics().setDepth(3);
 
     // Panel background and separator (static, depth 8–9)
     this.add.rectangle(width - PANEL_W / 2, height / 2, PANEL_W, height, 0x090705, 0.97)
@@ -130,19 +130,15 @@ export class MapScene extends Phaser.Scene {
     const s = delta / 1000;
     if (this.movementState === "TRAVELING") {
       this.travelElapsed += delta;
-      this.treeOffsetX  = (this.treeOffsetX  + SCROLL_PX_PER_S * 0.25 * s) % 800;
-      this.waterOffsetX = (this.waterOffsetX + SCROLL_PX_PER_S * s)         % 400;
-      this.bankOffsetX  = (this.bankOffsetX  + SCROLL_PX_PER_S * 1.6 * s)  % 600;
-
+      // Fast scroll — things rush past during travel
+      this.perspectiveScroll = (this.perspectiveScroll + 1.6 * s) % 1;
       if (this.travelElapsed >= TRAVEL_MS) {
         this.completeTravelTo(this.pendingDestId!);
       }
     } else {
-      // Idle ambient drift — water ripples and canopy always subtly alive
-      this.waterOffsetX = (this.waterOffsetX + 15 * s) % 400;
-      this.treeOffsetX  = (this.treeOffsetX  + 4  * s) % 800;
+      // Slow ambient current — river is always alive
+      this.perspectiveScroll = (this.perspectiveScroll + 0.06 * s) % 1;
     }
-
     this.drawRiverLayers();
     ambientSound.sync(this.state);
   }
@@ -150,140 +146,157 @@ export class MapScene extends Phaser.Scene {
   // ── River rendering ──────────────────────────────────────────────────────────
 
   private drawRiverLayers() {
-    const viewW = this.scale.width - PANEL_W;
-    const h     = this.scale.height;
-    const SKY_H  = Math.floor(h * 0.22);
-    const TREE_H = Math.floor(h * 0.13);
-    const BANK_H = Math.floor(h * 0.18);
-    const WATER_Y = SKY_H + TREE_H;
-    const WATER_H = h - WATER_Y - BANK_H;
+    const W   = this.scale.width - PANEL_W;
+    const H   = this.scale.height;
+    // Vanishing point — centre of view, 30% down
+    const vpX = W / 2;
+    const vpY = Math.floor(H * 0.30);
+    // River bank edges at the bottom of the screen
+    const lBot = Math.floor(W * 0.10);   // left water/bank boundary
+    const rBot = Math.floor(W * 0.90);   // right water/bank boundary
 
-    this.drawSky(viewW, SKY_H);
-    this.drawTrees(viewW, SKY_H, TREE_H);
-    this.drawWater(viewW, WATER_Y, WATER_H);
-    this.drawBank(viewW, h - BANK_H, BANK_H);
+    this.drawSky(W, H, vpX, vpY);
+    this.drawBanks(W, H, vpX, vpY, lBot, rBot);
+    this.drawWater(W, H, vpX, vpY, lBot, rBot);
+    this.drawTrees(W, H, vpX, vpY, lBot, rBot);
   }
 
-  private drawSky(viewW: number, SKY_H: number) {
+  private drawSky(W: number, _H: number, _vpX: number, vpY: number) {
     this.skyGfx.clear();
     const SKY_COLORS: Record<string, number> = {
       dawn: 0x3d1c08, morning: 0x112030, afternoon: 0x0d1e2c, dusk: 0x3a1204, night: 0x020408,
     };
     this.skyGfx.fillStyle(SKY_COLORS[this.state.timeOfDay] ?? 0x0d1e2c, 1);
-    this.skyGfx.fillRect(0, 0, viewW, SKY_H);
+    this.skyGfx.fillRect(0, 0, W, vpY + 4); // +4 covers seam with banks/water
 
     if (this.state.timeOfDay === "dawn" || this.state.timeOfDay === "dusk") {
       const glow = this.state.timeOfDay === "dawn" ? 0xff6820 : 0xdd3008;
-      // Lower horizon band — bright
-      this.skyGfx.fillStyle(glow, 0.35);
-      this.skyGfx.fillRect(0, Math.floor(SKY_H * 0.6), viewW, Math.floor(SKY_H * 0.4));
-      // Upper horizon fade
-      this.skyGfx.fillStyle(glow, 0.12);
-      this.skyGfx.fillRect(0, Math.floor(SKY_H * 0.25), viewW, Math.floor(SKY_H * 0.35));
+      // Bright band right at the horizon
+      this.skyGfx.fillStyle(glow, 0.50);
+      this.skyGfx.fillRect(0, vpY - 14, W, 14);
+      // Fade above the horizon
+      this.skyGfx.fillStyle(glow, 0.22);
+      this.skyGfx.fillRect(0, vpY - 48, W, 34);
+      this.skyGfx.fillStyle(glow, 0.08);
+      this.skyGfx.fillRect(0, vpY - 90, W, 42);
     }
 
     if (this.state.timeOfDay === "morning") {
-      this.skyGfx.fillStyle(0x4090d0, 0.08);
-      this.skyGfx.fillRect(0, 0, viewW, Math.floor(SKY_H * 0.5));
+      this.skyGfx.fillStyle(0x4090d0, 0.10);
+      this.skyGfx.fillRect(0, 0, W, Math.floor(vpY * 0.6));
     }
 
     if (this.state.timeOfDay === "night") {
       this.skyGfx.fillStyle(0xd4c9a0, 0.8);
-      for (let i = 0; i < 45; i++) {
-        const sx = this.rng(this.state.dayNumber * 100 + i * 7.3) * viewW;
-        const sy = this.rng(this.state.dayNumber * 100 + i * 13.7) * SKY_H * 0.85;
+      for (let i = 0; i < 55; i++) {
+        const sx = this.rng(this.state.dayNumber * 100 + i * 7.3) * W;
+        const sy = this.rng(this.state.dayNumber * 100 + i * 13.7) * (vpY - 8);
         this.skyGfx.fillRect(Math.floor(sx), Math.floor(sy), 1, 1);
       }
     }
   }
 
-  private drawTrees(viewW: number, SKY_H: number, TREE_H: number) {
+  // Draws perspective canopy silhouettes on both river banks.
+  // Trees are placed at depth fractions driven by perspectiveScroll —
+  // tiny at the horizon, full-height (and off-screen) near the viewer.
+  private drawTrees(W: number, H: number, vpX: number, vpY: number, lBot: number, rBot: number) {
     this.treeGfx.clear();
-    const TREE_BASE = SKY_H + TREE_H;
+    const tod = this.state.timeOfDay;
+    const canopy = (tod === "night") ? 0x060c05 : 0x0e1e0c;
 
-    // Mist band bridging sky and canopy
-    this.treeGfx.fillStyle(0x152212, 1);
-    this.treeGfx.fillRect(0, SKY_H - 4, viewW, TREE_H + 4);
+    // 13 tree slots evenly distributed across the 0–1 depth range
+    const SLOTS  = [0.03, 0.11, 0.19, 0.27, 0.35, 0.43, 0.51, 0.59, 0.67, 0.75, 0.83, 0.91, 0.97];
+    // Width multiplier per slot adds variety
+    const W_MULT = [1.0,  0.7,  1.3,  0.85, 1.1,  0.75, 1.2,  0.9,  1.0,  0.8,  1.15, 0.95, 1.05];
 
-    // Canopy silhouettes (tiled, scrolling at 0.25× speed)
-    this.treeGfx.fillStyle(0x0e1e0c, 1);
-    const PATTERN: [number, number, number][] = [
-      [18, 42, 54], [82, 24, 38], [128, 48, 70], [200, 32, 50],
-      [258, 56, 76], [338, 30, 46], [398, 44, 64], [462, 20, 36],
-      [508, 58, 78], [588, 36, 54], [648, 28, 44], [698, 50, 68],
-      [758, 24, 40], [798, 44, 60],
-    ];
-    for (let rep = -1; rep <= Math.ceil(viewW / 800) + 1; rep++) {
-      for (const [tx, tw, th] of PATTERN) {
-        const x = Math.floor(tx + rep * 800 - this.treeOffsetX);
-        if (x + tw < 0 || x > viewW) continue;
-        this.treeGfx.fillRect(x, TREE_BASE - th, tw, th);
-        this.treeGfx.fillRect(
-          x + Math.floor(tw / 2) - 1, TREE_BASE - Math.floor(th * 0.25),
-          3, Math.floor(th * 0.25),
-        );
-      }
+    for (let i = 0; i < SLOTS.length; i++) {
+      const f = (SLOTS[i] + this.perspectiveScroll) % 1;
+      if (f < 0.015) continue; // skip trees right at horizon — too small to see
+
+      // Perspective position along bank-edge lines
+      const bankY  = vpY + f * (H - vpY);
+      const lEdgeX = vpX - f * (vpX - lBot);  // where left bank meets water
+      const rEdgeX = vpX + f * (rBot - vpX);  // where right bank meets water
+
+      // Height: linear in f so trees reach into the sky even at medium depth
+      const treeH = f * H * 0.72;
+      const treeW = Math.max(2, f * 52 * W_MULT[i]);
+      const alpha = Math.min(1, f * 2.5); // fade in softly from horizon
+
+      this.treeGfx.fillStyle(canopy, alpha);
+      // Left tree — grows leftward from the bank edge
+      this.treeGfx.fillRect(lEdgeX - treeW, bankY - treeH, treeW, treeH);
+      // Right tree — grows rightward from the bank edge
+      this.treeGfx.fillRect(rEdgeX, bankY - treeH, treeW, treeH);
     }
   }
 
-  private drawWater(viewW: number, WATER_Y: number, WATER_H: number) {
+  // Draws the river as a perspective triangle (banks converge to vanishing point).
+  // Ripple lines scroll down from the horizon, growing wider as they approach.
+  private drawWater(W: number, H: number, vpX: number, vpY: number, lBot: number, rBot: number) {
     this.waterGfx.clear();
-    const base = this.state.timeOfDay === "night" ? 0x06101a : 0x0e2434;
+    const tod  = this.state.timeOfDay;
+    const base = tod === "night" ? 0x06101a : 0x0e2434;
+
+    // River surface triangle
     this.waterGfx.fillStyle(base, 1);
-    this.waterGfx.fillRect(0, WATER_Y, viewW, WATER_H);
+    this.waterGfx.fillTriangle(lBot, H, rBot, H, vpX, vpY);
 
-    // Reflection shimmer near tree line
-    this.waterGfx.fillStyle(0x284858, 0.4);
-    this.waterGfx.fillRect(0, WATER_Y, viewW, Math.floor(WATER_H * 0.15));
+    // Horizon reflection shimmer (narrow bright band at the vanishing point)
+    this.waterGfx.fillStyle(0x284858, 0.25);
+    this.waterGfx.fillTriangle(
+      vpX - 40, vpY + 30, vpX + 40, vpY + 30, vpX, vpY,
+    );
 
-    // Flowing ripple lines
+    // Perspective ripple lines — scroll toward the viewer from the horizon
     const PALETTE = [0x1c3848, 0x224050, 0x162c38, 0x244258];
-    for (let i = 0; i < 14; i++) {
-      const y    = WATER_Y + Math.floor((i / 14) * WATER_H);
-      const xOff = (this.waterOffsetX + i * 27) % 400;
-      this.waterGfx.lineStyle(1, PALETTE[i % PALETTE.length], 0.45);
-      let rx = -xOff;
-      while (rx < viewW) {
-        const segLen = 28 + (i * 19) % 52;
-        this.waterGfx.beginPath();
-        this.waterGfx.moveTo(rx, y);
-        this.waterGfx.lineTo(rx + segLen, y + Math.floor(Math.sin(i) * 2));
-        this.waterGfx.strokePath();
-        rx += segLen + 18 + (i * 11) % 28;
-      }
+    const N = 22;
+    for (let i = 0; i < N; i++) {
+      const f = ((i / N) + this.perspectiveScroll) % 1;
+      const yR = vpY + f * (H - vpY);
+      const lx = vpX - f * (vpX - lBot);
+      const rx = vpX + f * (rBot - vpX);
+      const alpha = 0.08 + f * 0.38; // faint near horizon, strong up close
+      this.waterGfx.lineStyle(1, PALETTE[i % PALETTE.length], alpha);
+      this.waterGfx.beginPath();
+      this.waterGfx.moveTo(lx, yR);
+      this.waterGfx.lineTo(rx, yR);
+      this.waterGfx.strokePath();
     }
 
     // Storm darkening
     if (this.state.weather === "storm") {
-      this.waterGfx.fillStyle(0x020406, 0.35);
-      this.waterGfx.fillRect(0, WATER_Y, viewW, WATER_H);
+      this.waterGfx.fillStyle(0x020406, 0.40);
+      this.waterGfx.fillTriangle(lBot, H, rBot, H, vpX, vpY);
     } else if (this.state.weather === "storm_approaching") {
-      this.waterGfx.fillStyle(0x020406, 0.18);
-      this.waterGfx.fillRect(0, WATER_Y, viewW, WATER_H);
+      this.waterGfx.fillStyle(0x020406, 0.20);
+      this.waterGfx.fillTriangle(lBot, H, rBot, H, vpX, vpY);
     }
   }
 
-  private drawBank(viewW: number, BANK_Y: number, BANK_H: number) {
+  // Draws the left and right forest banks as triangles converging to the VP.
+  private drawBanks(W: number, H: number, vpX: number, vpY: number, lBot: number, rBot: number) {
     this.bankGfx.clear();
-    this.bankGfx.fillStyle(0x0c1409, 1);
-    this.bankGfx.fillRect(0, BANK_Y, viewW, BANK_H);
+    const tod    = this.state.timeOfDay;
+    const forest = tod === "night" ? 0x060d05 : 0x0c1a09;
 
-    // Mud edge
-    this.bankGfx.fillStyle(0x1a2a14, 1);
-    this.bankGfx.fillRect(0, BANK_Y, viewW, 7);
+    // Left bank triangle: outer-left corner, inner water edge, vanishing point
+    this.bankGfx.fillStyle(forest, 1);
+    this.bankGfx.fillTriangle(0, H, lBot, H, vpX, vpY);
 
-    // Grass tufts (tiled, scrolling at 1.6× speed)
-    this.bankGfx.fillStyle(0x243a1c, 1);
-    const BASES = [30, 85, 150, 215, 290, 360, 430, 510, 580];
-    for (const base of BASES) {
-      for (let rep = -1; rep <= Math.ceil(viewW / 600) + 1; rep++) {
-        const x = Math.floor(base + rep * 600 - this.bankOffsetX);
-        if (x < -20 || x > viewW + 20) continue;
-        this.bankGfx.fillRect(x,      BANK_Y - 5, 3, 8);
-        this.bankGfx.fillRect(x + 6,  BANK_Y - 7, 3, 10);
-        this.bankGfx.fillRect(x + 12, BANK_Y - 4, 3, 7);
-      }
-    }
+    // Right bank triangle: inner water edge, outer-right corner, vanishing point
+    this.bankGfx.fillTriangle(rBot, H, W, H, vpX, vpY);
+
+    // Subtle lighter strip along the water/bank boundary lines (mud/beach)
+    this.bankGfx.lineStyle(3, tod === "night" ? 0x0a1808 : 0x162a10, 1);
+    this.bankGfx.beginPath();
+    this.bankGfx.moveTo(lBot, H);
+    this.bankGfx.lineTo(vpX, vpY);
+    this.bankGfx.strokePath();
+    this.bankGfx.beginPath();
+    this.bankGfx.moveTo(rBot, H);
+    this.bankGfx.lineTo(vpX, vpY);
+    this.bankGfx.strokePath();
   }
 
   // ── Navigation panel ─────────────────────────────────────────────────────────
@@ -391,44 +404,54 @@ export class MapScene extends Phaser.Scene {
       return;
     }
 
-    // ── Navigation destinations ──────────────────────────────────────────
+    // ── Continue down river ──────────────────────────────────────────────
+    // Adjacent nodes are shown as directional choices — names/types are only
+    // revealed if the player has visited before or has radio intel on them.
+    const forward = this.forwardNodes(this.state.currentNodeId);
+    if (forward.length === 0) return; // dead end (shouldn't happen outside destination)
+
     this.addDivider(PX, y, PANEL_W - PAD * 2);
     y += 14;
 
-    const hdr = this.add.text(PX, y, "CONTINUE TO:", {
-      fontSize: "9px", color: "#4a3820", fontFamily: "Georgia, serif", letterSpacing: 3,
-    }).setOrigin(0, 0);
-    this.navContainer.add(hdr);
-    y += hdr.height + 10;
-
-    const ICONS: Record<string, string> = {
-      town: "⌂", settlement: "◈", wildlife: "◉",
-      discovery: "✦", navigation: "⬡", story: "★",
-    };
+    const DIRECTION_LABELS = ["Continue down river", "Branch — left channel", "Branch — right channel"];
     const TYPE_COLORS: Record<string, string> = {
       town: "#e8a020", settlement: "#c8945a", wildlife: "#6ab04c",
       discovery: "#f5c842", navigation: "#4a9ade", story: "#e84040",
     };
+    const ICONS: Record<string, string> = {
+      town: "⌂", settlement: "◈", wildlife: "◉",
+      discovery: "✦", navigation: "⬡", story: "★",
+    };
 
-    for (const dest of this.adjacentNodes(this.state.currentNodeId)) {
-      const visited      = this.state.visitedNodeIds.has(dest.id);
-      const hasIntel     = this.state.radioTipNodeIds.has(dest.id);
-      const destMem      = this.state.derivedState.nodes[dest.id];
-      const label        = `${ICONS[dest.type] ?? "→"}  ${dest.name}${visited ? " ✓" : ""}`;
-      const col          = visited ? "#4a3820" : (TYPE_COLORS[dest.type] ?? "#a09070");
+    forward.forEach((dest, idx) => {
+      const visited  = this.state.visitedNodeIds.has(dest.id);
+      const hasIntel = this.state.radioTipNodeIds.has(dest.id);
+      const revealed = visited || hasIntel;
 
-      const destBtn = this.add.text(PX, y, label, {
+      // Label — only show name/type if known
+      let label: string;
+      let col: string;
+      if (revealed) {
+        label = `${ICONS[dest.type] ?? "→"}  ${dest.name}${visited ? "  ✓" : ""}`;
+        col   = visited ? "#4a3820" : (TYPE_COLORS[dest.type] ?? "#a09070");
+      } else {
+        // Unknown destination: directional label only
+        label = `→  ${DIRECTION_LABELS[idx] ?? "Continue →"}`;
+        col   = "#6a5a3a";
+      }
+
+      const btn = this.add.text(PX, y, label, {
         fontSize: "13px", color: col, fontFamily: "Georgia, serif",
         wordWrap: { width: PANEL_W - PAD * 2 },
       }).setOrigin(0, 0)
         .setInteractive({ useHandCursor: true })
-        .on("pointerover", () => destBtn.setColor("#ffffff"))
-        .on("pointerout",  () => destBtn.setColor(col))
+        .on("pointerover", () => btn.setColor("#ffffff"))
+        .on("pointerout",  () => btn.setColor(col))
         .on("pointerdown", () => this.travelTo(dest.id));
-      this.navContainer.add(destBtn);
-      y += destBtn.height + 2;
+      this.navContainer.add(btn);
+      y += btn.height + 2;
 
-      if (hasIntel) {
+      if (hasIntel && !visited) {
         const it = this.add.text(PX + 16, y, "📻 Radio intel", {
           fontSize: "9px", color: "#7a9aaa", fontFamily: "Georgia, serif", fontStyle: "italic",
         }).setOrigin(0, 0);
@@ -436,16 +459,8 @@ export class MapScene extends Phaser.Scene {
         y += it.height + 2;
       }
 
-      if (destMem && destMem.visit_count > 0) {
-        const pvt = this.add.text(PX + 16, y, `Visit ${destMem.visit_count + 1}`, {
-          fontSize: "9px", color: "#3a3020", fontFamily: "Georgia, serif", fontStyle: "italic",
-        }).setOrigin(0, 0);
-        this.navContainer.add(pvt);
-        y += pvt.height + 2;
-      }
-
       y += 6;
-    }
+    });
   }
 
   // ── Travel ───────────────────────────────────────────────────────────────────
@@ -457,7 +472,10 @@ export class MapScene extends Phaser.Scene {
     this.movementState    = "TRAVELING";
     this.travelElapsed    = 0;
     this.navContainer.setVisible(false);
-    this.travelText.setText(`→ ${destNode?.name ?? destId}`).setAlpha(1);
+    // Only reveal the destination name if already visited or has intel
+    const knownDest = this.state.visitedNodeIds.has(destId) || this.state.radioTipNodeIds.has(destId);
+    const travelLabel = knownDest ? `→ ${destNode?.name ?? destId}` : "Traveling down river…";
+    this.travelText.setText(travelLabel).setAlpha(1);
   }
 
   private completeTravelTo(destId: string) {
@@ -492,6 +510,16 @@ export class MapScene extends Phaser.Scene {
       .filter((e) => e.from === nodeId || e.to === nodeId)
       .map((e) => (e.from === nodeId ? e.to : e.from));
     return this.runNodes.filter((n) => adjIds.includes(n.id));
+  }
+
+  // Returns adjacent nodes that are "forward" — i.e. not already visited,
+  // except the destination which is always shown once reached.
+  // This hides the graph: players navigate blind unless they've been there
+  // before or have radio intel.
+  private forwardNodes(nodeId: string): RiverNode[] {
+    return this.adjacentNodes(nodeId).filter(
+      (n) => !this.state.visitedNodeIds.has(n.id) || n.id === "destination",
+    );
   }
 
   private addDivider(x: number, y: number, w: number) {
