@@ -127,9 +127,9 @@ export class MapScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number) {
+    const s = delta / 1000;
     if (this.movementState === "TRAVELING") {
       this.travelElapsed += delta;
-      const s = delta / 1000;
       this.treeOffsetX  = (this.treeOffsetX  + SCROLL_PX_PER_S * 0.25 * s) % 800;
       this.waterOffsetX = (this.waterOffsetX + SCROLL_PX_PER_S * s)         % 400;
       this.bankOffsetX  = (this.bankOffsetX  + SCROLL_PX_PER_S * 1.6 * s)  % 600;
@@ -137,6 +137,10 @@ export class MapScene extends Phaser.Scene {
       if (this.travelElapsed >= TRAVEL_MS) {
         this.completeTravelTo(this.pendingDestId!);
       }
+    } else {
+      // Idle ambient drift — water ripples and canopy always subtly alive
+      this.waterOffsetX = (this.waterOffsetX + 15 * s) % 400;
+      this.treeOffsetX  = (this.treeOffsetX  + 4  * s) % 800;
     }
 
     this.drawRiverLayers();
@@ -163,15 +167,24 @@ export class MapScene extends Phaser.Scene {
   private drawSky(viewW: number, SKY_H: number) {
     this.skyGfx.clear();
     const SKY_COLORS: Record<string, number> = {
-      dawn: 0x2a1808, morning: 0x0d1a24, afternoon: 0x0a1520, dusk: 0x250e06, night: 0x020408,
+      dawn: 0x3d1c08, morning: 0x112030, afternoon: 0x0d1e2c, dusk: 0x3a1204, night: 0x020408,
     };
-    this.skyGfx.fillStyle(SKY_COLORS[this.state.timeOfDay] ?? 0x0a1520, 1);
+    this.skyGfx.fillStyle(SKY_COLORS[this.state.timeOfDay] ?? 0x0d1e2c, 1);
     this.skyGfx.fillRect(0, 0, viewW, SKY_H);
 
     if (this.state.timeOfDay === "dawn" || this.state.timeOfDay === "dusk") {
-      const glow = this.state.timeOfDay === "dawn" ? 0xff8030 : 0xdd3008;
-      this.skyGfx.fillStyle(glow, 0.1);
-      this.skyGfx.fillRect(0, Math.floor(SKY_H * 0.55), viewW, Math.floor(SKY_H * 0.45));
+      const glow = this.state.timeOfDay === "dawn" ? 0xff6820 : 0xdd3008;
+      // Lower horizon band — bright
+      this.skyGfx.fillStyle(glow, 0.35);
+      this.skyGfx.fillRect(0, Math.floor(SKY_H * 0.6), viewW, Math.floor(SKY_H * 0.4));
+      // Upper horizon fade
+      this.skyGfx.fillStyle(glow, 0.12);
+      this.skyGfx.fillRect(0, Math.floor(SKY_H * 0.25), viewW, Math.floor(SKY_H * 0.35));
+    }
+
+    if (this.state.timeOfDay === "morning") {
+      this.skyGfx.fillStyle(0x4090d0, 0.08);
+      this.skyGfx.fillRect(0, 0, viewW, Math.floor(SKY_H * 0.5));
     }
 
     if (this.state.timeOfDay === "night") {
@@ -189,11 +202,11 @@ export class MapScene extends Phaser.Scene {
     const TREE_BASE = SKY_H + TREE_H;
 
     // Mist band bridging sky and canopy
-    this.treeGfx.fillStyle(0x0d1a10, 1);
+    this.treeGfx.fillStyle(0x152212, 1);
     this.treeGfx.fillRect(0, SKY_H - 4, viewW, TREE_H + 4);
 
     // Canopy silhouettes (tiled, scrolling at 0.25× speed)
-    this.treeGfx.fillStyle(0x0c1a0a, 1);
+    this.treeGfx.fillStyle(0x0e1e0c, 1);
     const PATTERN: [number, number, number][] = [
       [18, 42, 54], [82, 24, 38], [128, 48, 70], [200, 32, 50],
       [258, 56, 76], [338, 30, 46], [398, 44, 64], [462, 20, 36],
@@ -215,16 +228,16 @@ export class MapScene extends Phaser.Scene {
 
   private drawWater(viewW: number, WATER_Y: number, WATER_H: number) {
     this.waterGfx.clear();
-    const base = this.state.timeOfDay === "night" ? 0x050c10 : 0x0c1c24;
+    const base = this.state.timeOfDay === "night" ? 0x06101a : 0x0e2434;
     this.waterGfx.fillStyle(base, 1);
     this.waterGfx.fillRect(0, WATER_Y, viewW, WATER_H);
 
     // Reflection shimmer near tree line
-    this.waterGfx.fillStyle(0x1e3040, 0.3);
-    this.waterGfx.fillRect(0, WATER_Y, viewW, Math.floor(WATER_H * 0.12));
+    this.waterGfx.fillStyle(0x284858, 0.4);
+    this.waterGfx.fillRect(0, WATER_Y, viewW, Math.floor(WATER_H * 0.15));
 
     // Flowing ripple lines
-    const PALETTE = [0x152a34, 0x1a3040, 0x102028, 0x1c3545];
+    const PALETTE = [0x1c3848, 0x224050, 0x162c38, 0x244258];
     for (let i = 0; i < 14; i++) {
       const y    = WATER_Y + Math.floor((i / 14) * WATER_H);
       const xOff = (this.waterOffsetX + i * 27) % 400;
@@ -252,15 +265,15 @@ export class MapScene extends Phaser.Scene {
 
   private drawBank(viewW: number, BANK_Y: number, BANK_H: number) {
     this.bankGfx.clear();
-    this.bankGfx.fillStyle(0x090e07, 1);
+    this.bankGfx.fillStyle(0x0c1409, 1);
     this.bankGfx.fillRect(0, BANK_Y, viewW, BANK_H);
 
     // Mud edge
-    this.bankGfx.fillStyle(0x111a0e, 1);
+    this.bankGfx.fillStyle(0x1a2a14, 1);
     this.bankGfx.fillRect(0, BANK_Y, viewW, 7);
 
     // Grass tufts (tiled, scrolling at 1.6× speed)
-    this.bankGfx.fillStyle(0x182614, 1);
+    this.bankGfx.fillStyle(0x243a1c, 1);
     const BASES = [30, 85, 150, 215, 290, 360, 430, 510, 580];
     for (const base of BASES) {
       for (let rep = -1; rep <= Math.ceil(viewW / 600) + 1; rep++) {
